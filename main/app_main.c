@@ -25,10 +25,14 @@
 
 #include "driver/gpio.h"
 
+#include "freertos/queue.h"
+
 static const char *TAG = "APP_MAIN";
 
 extern const uint8_t wifi_ssid_from_file[] asm("_binary_wifi_ssid_txt_start");
 extern const uint8_t wifi_password_from_file[] asm("_binary_wifi_password_txt_start");
+
+static xQueueHandle gpio_evt_queue = NULL;
 
 // ================================================================================================= UPLOAD TASK
 
@@ -41,7 +45,7 @@ void Upload_Task_Code(void *pvParameters)
     printf("mqtt led pin: %d\n", MQTT_LED_PIN);
 
     gpio_config_t wifi_led_config = {
-        .pin_bit_mask = ((1ULL << WIFI_LED_PIN) | (1ULL << MQTT_LED_PIN)),
+        .pin_bit_mask = GPIO_OUTPUT_PIN_BITMASK,
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = 0,
         .pull_down_en = 0,
@@ -49,7 +53,7 @@ void Upload_Task_Code(void *pvParameters)
     };
 
     gpio_config_t mqtt_led_config = {
-        .pin_bit_mask = ((1ULL << WIFI_LED_PIN) | (1ULL << MQTT_LED_PIN)),
+        .pin_bit_mask = GPIO_OUTPUT_PIN_BITMASK,
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = 0,
         .pull_down_en = 0,
@@ -70,6 +74,12 @@ void Upload_Task_Code(void *pvParameters)
         gpio_set_level(WIFI_LED_PIN, 1);
         gpio_set_level(MQTT_LED_PIN, 0);
         vTaskDelay(500 / portTICK_PERIOD_MS);
+
+        uint32_t io_num;
+        if (xQueueReceive(gpio_evt_queue, &io_num, (100 / portTICK_PERIOD_MS)))
+        {
+            printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
+        }
     }
 }
 
@@ -90,6 +100,30 @@ static void start_upload_task(void)
     configASSERT(Upload_Task);
 }
 
+static void IRAM_ATTR counter_isr(void *arg)
+{
+    uint32_t gpio_num = (uint32_t)arg;
+    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}
+
+static void counter_init(void)
+{
+    gpio_config_t counter_interrupt_pin_config = {
+        .pin_bit_mask = GPIO_INPUT_PIN_BITMASK,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 0,
+        .intr_type = GPIO_INTR_POSEDGE,
+    };
+
+    gpio_config(&counter_interrupt_pin_config);
+
+    //install gpio isr service
+    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(COUNTER_PIN, counter_isr, (void *)COUNTER_PIN);
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -105,5 +139,9 @@ void app_main(void)
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
 
+    //create a queue to handle gpio event from isr
+    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+
+    counter_init();
     start_upload_task();
 }
