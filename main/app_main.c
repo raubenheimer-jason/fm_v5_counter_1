@@ -21,6 +21,10 @@
 #include "esp_tls.h"
 #include "esp_ota_ops.h"
 
+#include "config.h"
+
+#include "driver/gpio.h"
+
 static const char *TAG = "APP_MAIN";
 
 extern const uint8_t wifi_ssid_from_file[] asm("_binary_wifi_ssid_txt_start");
@@ -33,10 +37,39 @@ void Upload_Task_Code(void *pvParameters)
     printf("ssid: %s\n", wifi_ssid_from_file);
     printf("pass: %s\n", wifi_password_from_file);
 
+    printf("wifi led pin: %d\n", WIFI_LED_PIN);
+    printf("mqtt led pin: %d\n", MQTT_LED_PIN);
+
+    gpio_config_t wifi_led_config = {
+        .pin_bit_mask = ((1ULL << WIFI_LED_PIN) | (1ULL << MQTT_LED_PIN)),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 0,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+
+    gpio_config_t mqtt_led_config = {
+        .pin_bit_mask = ((1ULL << WIFI_LED_PIN) | (1ULL << MQTT_LED_PIN)),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 0,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+
+    gpio_config(&wifi_led_config);
+    gpio_config(&mqtt_led_config);
+
     for (;;)
     {
         // Task code goes here.
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+        gpio_set_level(WIFI_LED_PIN, 0);
+        gpio_set_level(MQTT_LED_PIN, 1);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+
+        gpio_set_level(WIFI_LED_PIN, 1);
+        gpio_set_level(MQTT_LED_PIN, 0);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
