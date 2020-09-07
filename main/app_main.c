@@ -1,10 +1,4 @@
-/* MQTT over SSL Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/* FM_V5_counter_1
 */
 
 #include <stdio.h>
@@ -22,17 +16,21 @@
 #include "esp_ota_ops.h"
 
 #include "config.h"
+#include "main.h"
 
 #include "driver/gpio.h"
 
 #include "freertos/queue.h"
+
+#include "components/rtc/rtc.h"
 
 static const char *TAG = "APP_MAIN";
 
 extern const uint8_t wifi_ssid_from_file[] asm("_binary_wifi_ssid_txt_start");
 extern const uint8_t wifi_password_from_file[] asm("_binary_wifi_password_txt_start");
 
-static xQueueHandle gpio_evt_queue = NULL;
+// static xQueueHandle gpio_evt_queue = NULL;
+static xQueueHandle fram_store_queue = NULL;
 
 // ================================================================================================= UPLOAD TASK
 
@@ -75,11 +73,11 @@ void Upload_Task_Code(void *pvParameters)
         gpio_set_level(MQTT_LED_PIN, 0);
         vTaskDelay(500 / portTICK_PERIOD_MS);
 
-        uint32_t io_num;
-        if (xQueueReceive(gpio_evt_queue, &io_num, (100 / portTICK_PERIOD_MS)))
-        {
-            printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
-        }
+        // uint32_t io_num;
+        // if (xQueueReceive(gpio_evt_queue, &io_num, (100 / portTICK_PERIOD_MS)))
+        // {
+        //     printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
+        // }
     }
 }
 
@@ -100,10 +98,39 @@ static void start_upload_task(void)
     configASSERT(Upload_Task);
 }
 
+static void IRAM_ATTR rtc_alarm_isr(void *arg)
+{
+    /*
+        •	Add count data and timestamp (from ESP time) to FRAM queue
+        •	Make timestamp in the middle of the minute (could also do this in FRAM Task)
+        •	Zero count variable
+        •	Increment “next_minute” variable (zero if hour is passed) <-- do we need this?
+        •	If hour is passed (probably need “next_minute” counter), set “upload_status” flag true
+    */
+    uint32_t gpio_num = (uint32_t)arg;
+    xQueueSendFromISR(fram_store_queue, &gpio_num, NULL);
+}
+
 static void IRAM_ATTR counter_isr(void *arg)
 {
-    uint32_t gpio_num = (uint32_t)arg;
-    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+    // uint32_t gpio_num = (uint32_t)arg;
+    // xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}
+
+static void rtc_init(void)
+{
+    gpio_config_t rtc_interrupt_pin_config = {
+        .pin_bit_mask = GPIO_INPUT_PIN_BITMASK,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 0,
+        .intr_type = GPIO_INTR_NEGEDGE,
+    };
+
+    gpio_config(&rtc_interrupt_pin_config);
+
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(RTC_ALARM_PIN, rtc_alarm_isr, (void *)RTC_ALARM_PIN);
 }
 
 static void counter_init(void)
@@ -118,8 +145,8 @@ static void counter_init(void)
 
     gpio_config(&counter_interrupt_pin_config);
 
-    //install gpio isr service
-    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    // //install gpio isr service
+    // gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     //hook isr handler for specific gpio pin
     gpio_isr_handler_add(COUNTER_PIN, counter_isr, (void *)COUNTER_PIN);
 }
@@ -139,9 +166,15 @@ void app_main(void)
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
 
+    rtc_test();
     //create a queue to handle gpio event from isr
-    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+    // gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+    fram_store_queue = xQueueCreate(10, sizeof(uint64_t));
 
+    //install gpio isr service
+    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+
+    rtc_init();
     counter_init();
     start_upload_task();
 }
