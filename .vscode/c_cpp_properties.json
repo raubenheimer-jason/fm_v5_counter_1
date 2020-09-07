@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "includePath": [
+                "${config:idf.espIdfPath}/components/**",
+                "${config:idf.espIdfPathWin}/components/**",
+                "${workspaceFolder}/**"
+            ],
+            "browse": {
+                "path": [
+                    "${config:idf.espIdfPath}/components",
+                    "${config:idf.espIdfPathWin}/components",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "compileCommands": "C:/USERS/JASON/ONEDRIVE/DOCUMENTS/PROJECTS/TOI/FACTORY_MONITORING/ESP32/FM_V5_COUNTER_1/FM_V5_COUNTER_1-FIRMWARE/BUILD/COMPILE_COMMANDS.JSON"
+        }
+    ],
+    "version": 4
+}
