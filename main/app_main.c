@@ -26,15 +26,35 @@ static const char *TAG = "APP_MAIN";
 extern const uint8_t wifi_ssid_from_file[] asm("_binary_wifi_ssid_txt_start");
 extern const uint8_t wifi_password_from_file[] asm("_binary_wifi_password_txt_start");
 
-static void mqtt_app_start(void)
+// ================================================================================================= UPLOAD TASK
+
+void Upload_Task_Code(void *pvParameters)
 {
     printf("ssid: %s\n", wifi_ssid_from_file);
     printf("pass: %s\n", wifi_password_from_file);
 
-    while (1)
+    for (;;)
     {
+        // Task code goes here.
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+}
+
+// ================================================================================================= UPLOAD TASK
+
+static void start_upload_task(void)
+{
+    static uint8_t ucParameterToPass;
+    TaskHandle_t Upload_Task = NULL;
+    const uint32_t STACK_SIZE = 24000;
+    const uint8_t task_priority = 10;
+
+    // Create the task, storing the handle.  Note that the passed parameter ucParameterToPass
+    // must exist for the lifetime of the task, so in this case is declared static.  If it was just an
+    // an automatic stack variable it might no longer exist, or at least have been corrupted, by the time
+    // the new task attempts to access it.
+    xTaskCreate(Upload_Task_Code, "Upload_Task", STACK_SIZE, &ucParameterToPass, task_priority, &Upload_Task);
+    configASSERT(Upload_Task);
 }
 
 void app_main(void)
@@ -52,5 +72,5 @@ void app_main(void)
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
 
-    mqtt_app_start();
+    start_upload_task();
 }
