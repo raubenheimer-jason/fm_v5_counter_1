@@ -43,7 +43,7 @@ void Fram_Task_Code(void *pvParameters)
     {
         if (rtc_alarm_flag == true)
         {
-            printf("--------------------- rtc alarm!! --------------------- \n");
+            printf("rtc alarm!!\n");
             rtc_alarm_flag = false;
             rtc_clear_alarm();
             uint32_t unix_now = rtc_get_unix();

@@ -49,41 +49,24 @@ esp_err_t rtc_begin(uint8_t scl_pin, uint8_t sda_pin)
     return res;
 }
 
-/**
- * Clear the rtc alarms
- * 
- * @TODO: Read the register and mask bits before writing
- */
 void rtc_clear_alarm()
 {
     // Status register
-
-    uint8_t status_register_value = 0b10001000;
-    // write new register value
-    rtc_write_reg(STATUS_REGISTER_ADDR, status_register_value); // 0b10001000
-
+    rtc_write_reg(0x0F, 0b10001000);
     ESP_LOGI(TAG, "cleared alarms");
 }
 
-/**
- * Configures alarm 2 to trigger every minute (00 seconds of every minute)
- * 
- * @TODO: Read the register and mask bits before writing
- */
 void rtc_config_alarm()
 {
-    rtc_write_reg(ALARM_2_MINUTES_REGISTER_ADDR, 0b10000000);
-    rtc_write_reg(ALARM_2_MINUTES_REGISTER_ADDR + 1, 0b10000000);
-    rtc_write_reg(ALARM_2_MINUTES_REGISTER_ADDR + 2, 0b10000000);
+    rtc_write_reg(0x0B, 0b10000000);
+    rtc_write_reg(0x0C, 0b10000000);
+    rtc_write_reg(0x0D, 0b10000000);
 
     // Control register
+    rtc_write_reg(0x0E, 0b00011110);
 
-    // Current value
-    uint8_t control_register_value = rtc_read_reg(CONTROL_REGISTER_ADDR);
-
-    control_register_value |= 1UL << 1; // set the first bit (A2IE)
-
-    rtc_write_reg(CONTROL_REGISTER_ADDR, control_register_value); // 0b00011110
+    // // Status register
+    // rtc_write_reg(0x0F, 0b10001000);
 
     ESP_LOGI(TAG, "config alarm done");
 }
@@ -465,7 +448,7 @@ static uint8_t rtc_read_reg(uint8_t reg_addr)
 
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "could not read rtc register (ret = %d)", ret);
+        ESP_LOGE(TAG, "could not read rtc register");
     }
 
     return value;

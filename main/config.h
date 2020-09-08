@@ -24,4 +24,7 @@ const uint8_t RTC_ALARM_PIN = 20;
 const uint8_t I2C_SCL_PIN = 40;
 const uint8_t I2C_SDA_PIN = 39;
 
+// Time
+const uint32_t last_known_unix = 1598008484;
+
 #endif // _CONFIG_H_
