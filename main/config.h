@@ -21,7 +21,7 @@ const uint8_t COUNTER_PIN = 19;
 const uint8_t RTC_ALARM_PIN = 20;
 
 // RTC I2C pins
-// const uint8_t I2C_SCL = 40;
-// const uint8_t I2C_SDA = 39;
+const uint8_t I2C_SCL_PIN = 40;
+const uint8_t I2C_SDA_PIN = 39;
 
 #endif // _CONFIG_H_
