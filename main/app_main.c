@@ -24,10 +24,15 @@
 
 #include "components/rtc/rtc.h"
 
+// #include <time.h>
+
 static const char *TAG = "APP_MAIN";
 
 extern const uint8_t wifi_ssid_from_file[] asm("_binary_wifi_ssid_txt_start");
 extern const uint8_t wifi_password_from_file[] asm("_binary_wifi_password_txt_start");
+
+// Semaphore for count variable
+xSemaphoreHandle gatekeeper = 0;
 
 static xQueueHandle fram_store_queue = NULL;
 // static xQueueHandle upload_queue = NULL;
@@ -46,17 +51,23 @@ void Fram_Task_Code(void *pvParameters)
             printf("--------------------- rtc alarm!! --------------------- \n");
             rtc_alarm_flag = false;
             rtc_clear_alarm();
-            uint32_t unix_now = rtc_get_unix();
-            printf("unix now: %d\n", unix_now);
-            printf("count: %d\n", count);
-            count = 0;
+            // uint32_t unix_now = rtc_get_unix();
+            // printf("unix now: %d\n", unix_now);
+            // printf("count: %d\n", count);
+            // count = 0;
         }
 
-        // uint64_t telemetry_to_store;
-        // if (xQueueReceive(fram_store_queue, &telemetry_to_store, (100 / portTICK_PERIOD_MS)))
-        // {
-        //     printf("received telemetry_to_store");
-        // }
+        uint64_t telemetry_to_store;
+        if (xQueueReceive(fram_store_queue, &telemetry_to_store, (100 / portTICK_PERIOD_MS)))
+        {
+            printf("received telemetry_to_store\n");
+
+            uint32_t telemetry_unix = telemetry_to_store >> 32;
+            uint32_t telemetry_count = (uint32_t)telemetry_to_store;
+
+            printf("telemetry_unix:\t%d\n", telemetry_unix);
+            printf("telemetry_count:\t%d\n", telemetry_count);
+        }
 
         vTaskDelay(500 / portTICK_PERIOD_MS);
 
@@ -150,12 +161,43 @@ static void start_fram_task()
 
 static void IRAM_ATTR rtc_alarm_isr(void *arg)
 {
-    rtc_alarm_flag = true;
+    if (xSemaphoreTake(gatekeeper, 200))
+    {
+        rtc_alarm_flag = true;
+
+        uint32_t local_count;
+
+        // store count value in local variable
+        local_count = count;
+
+        // clear count
+        count = 0;
+
+        // release count
+        xSemaphoreGive(gatekeeper);
+
+        // send count and time data to Fram Task
+
+        // get time from esp32
+        uint32_t unix_now = 123456789;
+
+        // store time and count in uint64_t
+        uint64_t telemetry = (uint64_t)unix_now << 32 | local_count;
+
+        // send telemetry to fram_queue
+        xQueueSendFromISR(fram_store_queue, &telemetry, NULL);
+    }
 }
 
 static void IRAM_ATTR counter_isr(void *arg)
 {
-    count++;
+    if (xSemaphoreTake(gatekeeper, 200))
+    {
+        count++;
+
+        // release count
+        xSemaphoreGive(gatekeeper);
+    }
 }
 
 /**
@@ -196,6 +238,9 @@ void app_main(void)
     esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
+
+    // initialise semaphore
+    gatekeeper = xSemaphoreCreateMutex();
 
     // create queues
     fram_store_queue = xQueueCreate(10, sizeof(uint64_t));
