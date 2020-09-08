@@ -24,7 +24,7 @@
 
 #include "components/rtc/rtc.h"
 
-// #include <time.h>
+#include <time.h>
 
 static const char *TAG = "APP_MAIN";
 
@@ -65,8 +65,8 @@ void Fram_Task_Code(void *pvParameters)
             uint32_t telemetry_unix = telemetry_to_store >> 32;
             uint32_t telemetry_count = (uint32_t)telemetry_to_store;
 
-            printf("telemetry_unix:\t%d\n", telemetry_unix);
-            printf("telemetry_count:\t%d\n", telemetry_count);
+            printf("telemetry_unix:  %d\n", telemetry_unix);
+            printf("telemetry_count: %d\n", telemetry_count);
         }
 
         vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -163,8 +163,6 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
 {
     if (xSemaphoreTake(gatekeeper, 200))
     {
-        rtc_alarm_flag = true;
-
         uint32_t local_count;
 
         // store count value in local variable
@@ -176,10 +174,14 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
         // release count
         xSemaphoreGive(gatekeeper);
 
+        rtc_alarm_flag = true;
+
         // send count and time data to Fram Task
 
         // get time from esp32
-        uint32_t unix_now = 123456789;
+        // uint32_t unix_now = 123456789;
+        time_t unix_now;
+        time(&unix_now);
 
         // store time and count in uint64_t
         uint64_t telemetry = (uint64_t)unix_now << 32 | local_count;
