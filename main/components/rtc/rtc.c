@@ -50,9 +50,7 @@ esp_err_t rtc_begin(uint8_t scl_pin, uint8_t sda_pin)
 }
 
 /**
- * Clear the rtc alarms
- * 
- * @TODO: Read the register and mask bits before writing
+ * Clear the rtc alarm 2
  */
 void rtc_clear_alarm()
 {
@@ -62,7 +60,6 @@ void rtc_clear_alarm()
     // clear alarm 2 (BIT 1)
     status_register_value &= ~((uint8_t)1 << 1);
 
-    // uint8_t status_register_value = 0b10001000;
     // write new register value
     rtc_write_reg(STATUS_REGISTER_ADDR, status_register_value); // 0b10001000
 
@@ -71,8 +68,6 @@ void rtc_clear_alarm()
 
 /**
  * Configures alarm 2 to trigger every minute (00 seconds of every minute)
- * 
- * @TODO: Read the register and mask bits before writing
  */
 void rtc_config_alarm()
 {
@@ -172,15 +167,14 @@ void rtc_test(void)
  */
 uint32_t rtc_get_unix()
 {
-    // // First check the Oscillator Stop Flag (BIT 7 of the Status Regster)
-    // uint8_t status_register_value = rtc_read_reg(STATUS_REGISTER_ADDR);
-    // printf("status_register_value: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
+    // First check the Oscillator Stop Flag (BIT 7 of the Status Regster)
+    uint8_t status_register_value = rtc_read_reg(STATUS_REGISTER_ADDR);
+    printf("status_register_value: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
 
-    // if ((status_register_value >> 7) == 1)
-    // {
-    //     ESP_LOGE(TAG, "Oscillator Stop Flag == 1, time may be invalid");
-    //     return 0;
-    // }
+    if ((status_register_value >> 7) == 1)
+    {
+        ESP_LOGW(TAG, "Oscillator Stop Flag == 1, time may be invalid");
+    }
 
     uint8_t seconds_reg = 0;
     uint8_t minutes_reg = 0;
@@ -298,10 +292,6 @@ uint32_t rtc_get_unix()
 
         return mktime(&my_time);
     }
-    // else
-    // {
-    //     printf("probably didnt work... ");
-    // }
 
     ESP_LOGE(TAG, "getting time from rtc probably didn't work...");
     return 0;
@@ -494,53 +484,6 @@ static uint8_t rtc_read_reg(uint8_t reg_addr)
 
     return value;
 }
-
-// uint8_t read_reg_2(uint8_t reg_addr)
-// {
-//     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-//     uint8_t reg_val;
-
-//     // Start
-//     i2c_master_start(cmd);
-
-//     // Master write slave address + write (0) [need to write register pointer, where to read from]
-//     i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
-
-//     // Ack from slave
-
-//     // Send address from where to read
-//     i2c_master_write_byte(cmd, reg_addr, ACK_CHECK_EN);
-
-//     // Ack from slave
-
-//     // Repeated start
-//     i2c_master_start(cmd);
-
-//     // Master write slave address + read (1)
-//     i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
-
-//     // Ack from slave
-
-//     // Master read data from slave
-//     i2c_master_read_byte(cmd, &reg_val, I2C_MASTER_NACK);
-
-//     // Ack from master
-
-//     // .... repeat until all necessary registers have been read
-
-//     // STOP from master
-//     i2c_master_stop(cmd);
-
-//     esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-//     i2c_cmd_link_delete(cmd);
-
-//     if (ret != ESP_OK)
-//     {
-//         ESP_LOGE(TAG, "[read_reg_2] could not read rtc register (ret = %d)", ret);
-//     }
-
-//     return reg_val;
-// }
 
 /**
  * @brief i2c master initialization

@@ -158,6 +158,10 @@ static void IRAM_ATTR counter_isr(void *arg)
     count++;
 }
 
+/**
+ * Initialise the gpio interrupts
+ * (RTC alarm & counter)
+ */
 static void gpio_interrupt_init(void)
 {
     gpio_config_t gpio_interrupt_pin_config = {
@@ -177,36 +181,6 @@ static void gpio_interrupt_init(void)
     gpio_isr_handler_add(RTC_ALARM_PIN, rtc_alarm_isr, (void *)RTC_ALARM_PIN);
     gpio_isr_handler_add(COUNTER_PIN, counter_isr, (void *)COUNTER_PIN);
 }
-
-// static void rtc_interrupt_init(void)
-// {
-//     gpio_config_t rtc_interrupt_pin_config = {
-//         .pin_bit_mask = GPIO_INPUT_PIN_BITMASK,
-//         .mode = GPIO_MODE_INPUT,
-//         .pull_up_en = 0,
-//         .pull_down_en = 0,
-//         .intr_type = GPIO_INTR_NEGEDGE,
-//     };
-
-//     gpio_config(&rtc_interrupt_pin_config);
-//     // hook isr handler for specific gpio pin
-//     gpio_isr_handler_add(RTC_ALARM_PIN, rtc_alarm_isr, (void *)RTC_ALARM_PIN);
-// }
-
-// static void counter_interrupt_init(void)
-// {
-//     gpio_config_t counter_interrupt_pin_config = {
-//         .pin_bit_mask = GPIO_INPUT_PIN_BITMASK,
-//         .mode = GPIO_MODE_INPUT,
-//         .pull_up_en = 0,
-//         .pull_down_en = 0,
-//         .intr_type = GPIO_INTR_POSEDGE,
-//     };
-
-//     gpio_config(&counter_interrupt_pin_config);
-//     // hook isr handler for specific gpio pin
-//     gpio_isr_handler_add(COUNTER_PIN, counter_isr, (void *)COUNTER_PIN);
-// }
 
 void app_main(void)
 {
@@ -231,8 +205,6 @@ void app_main(void)
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
 
-    // rtc_interrupt_init();
-    // counter_interrupt_init();
     gpio_interrupt_init();
 
     // start_upload_task();
@@ -240,7 +212,6 @@ void app_main(void)
 
     rtc_begin(I2C_SCL_PIN, I2C_SDA_PIN);
 
-    // rtc_test();
     uint32_t unix_to_set = 1599553793;
     rtc_set_date_time(&unix_to_set);
     rtc_config_alarm();
