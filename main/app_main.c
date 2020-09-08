@@ -242,7 +242,8 @@ void app_main(void)
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
 
-    fram_spi_init(SPI_MOSI_PIN, SPI_MISO_PIN, SPI_CLK_PIN, SPI_CS_PIN, FRAM_HOST);
+    // fram_spi_init(SPI_MOSI_PIN, SPI_MISO_PIN, SPI_CLK_PIN, SPI_CS_PIN, FRAM_HOST);
+    fram_spi_init();
     test();
 
     // for (;;)

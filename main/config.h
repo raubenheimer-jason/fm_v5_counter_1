@@ -27,13 +27,19 @@ const uint8_t I2C_SDA_PIN = 39;
 // Time
 const uint32_t last_known_unix = 1598008484;
 
-// FRAM SPI
-// pins
-const uint8_t SPI_MOSI_PIN = 36;
-const uint8_t SPI_MISO_PIN = 34;
-const uint8_t SPI_CLK_PIN = 35;
-const uint8_t SPI_CS_PIN = 33;
-// host
-const uint8_t FRAM_HOST = SPI2_HOST;
+// // FRAM SPI
+// // pins
+// const uint8_t SPI_MOSI_PIN = 36;
+// const uint8_t SPI_MISO_PIN = 34;
+// const uint8_t SPI_CLK_PIN = 35;
+// const uint8_t SPI_CS_PIN = 33;
+// // host
+// const uint8_t FRAM_HOST = SPI2_HOST;
+// // data sizes etc.
+// const uint8_t telemetry_bytes = 8;
+// // ((8000-8)/ 8) == 999 --> so memory address limit top = 8000-8 = 7992
+// // ((128,000-8)/ 8) == 15,999 -- > so memory address limit top = 128,000-8 = 127,992
+// const uint32_t fram_limit_top = 127992;
+// const uint8_t fram_limit_bottom = 4;
 
 #endif // _CONFIG_H_
