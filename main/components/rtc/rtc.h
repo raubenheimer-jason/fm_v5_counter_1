@@ -24,17 +24,12 @@
         (byte & 0x01 ? '1' : '0')
 
 // Non-static prototypes
-// esp_err_t rtc_set_date_time(i2c_port_t i2c_num, uint32_t *unix);
 esp_err_t rtc_set_date_time(uint32_t *unix);
-// uint32_t rtc_get_unix(i2c_port_t i2c_num); //, uint32_t *unix)
 uint32_t rtc_get_unix(); //, uint32_t *unix)
 void rtc_test(void);
 esp_err_t rtc_begin(uint8_t scl_pin, uint8_t sda_pin);
+
 void rtc_print_status_register(void);
-void rtc_print_alarm_registers(void);
-
-void rtc_reset_alarm(uint8_t alarm_to_clear);
-void set_rtc_alarm(uint8_t alarm_to_set);
-
+void rtc_print_control_register(void);
 
 #endif // _RTC_H_

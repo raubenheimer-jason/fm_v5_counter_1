@@ -50,7 +50,6 @@ static xQueueHandle fram_store_queue = NULL;
 
 // ================================================================================================= UPLOAD TASK
 
-bool rtc_flag = false;
 bool count_flag = false;
 
 void Upload_Task_Code(void *pvParameters)
@@ -99,24 +98,14 @@ void Upload_Task_Code(void *pvParameters)
         //     rtc_reset_alarm();
         // }
 
-        if (rtc_flag == true)
-        {
-            printf("rtc\n");
-            rtc_flag = false;
-            rtc_reset_alarm(2);
-        }
-
         if (count_flag == true)
         {
             printf("counter\n");
             count_flag = false;
         }
 
-        // rtc_print_status_register();
-        // rtc_reset_alarm();
-
-        // rtc_print_alarm_registers();
-        // printf("\n");
+        uint32_t rtc_unix = rtc_get_unix();
+        printf("unix from rtc: %d\n", rtc_unix);
     }
 }
 
@@ -138,42 +127,11 @@ static void start_upload_task(void)
     configASSERT(Upload_Task);
 }
 
-static void IRAM_ATTR rtc_alarm_isr(void *arg)
-{
-    /*
-        •	Add count data and timestamp (from ESP time) to FRAM queue
-        •	Make timestamp in the middle of the minute (could also do this in FRAM Task)
-        •	Zero count variable
-        •	Increment “next_minute” variable (zero if hour is passed) <-- do we need this?
-        •	If hour is passed (probably need “next_minute” counter), set “upload_status” flag true
-    */
-    uint32_t gpio_num = (uint32_t)arg;
-    // xQueueSendFromISR(fram_store_queue, &gpio_num, NULL);
-
-    rtc_flag = true;
-}
-
 static void IRAM_ATTR counter_isr(void *arg)
 {
     count_flag = true;
     // uint32_t gpio_num = (uint32_t)arg;
     // xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
-}
-
-static void rtc_init(void)
-{
-    gpio_config_t rtc_interrupt_pin_config = {
-        .pin_bit_mask = GPIO_INPUT_PIN_BITMASK,
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = 0,
-        .pull_down_en = 0,
-        .intr_type = GPIO_INTR_NEGEDGE,
-    };
-
-    gpio_config(&rtc_interrupt_pin_config);
-
-    //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(RTC_ALARM_PIN, rtc_alarm_isr, (void *)RTC_ALARM_PIN);
 }
 
 static void counter_init(void)
@@ -217,12 +175,8 @@ void app_main(void)
 
     uint32_t unix_from_rtc = 0;
 
-    // ret = rtc_set_date_time(I2C_MASTER_NUM, &unix_to_set);
     ret = rtc_set_date_time(&unix_to_set);
 
-    set_rtc_alarm(2);
-
-    // rtc_test();
     //create a queue to handle gpio event from isr
     // gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     fram_store_queue = xQueueCreate(10, sizeof(uint64_t));
@@ -230,7 +184,6 @@ void app_main(void)
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
 
-    rtc_init();
     counter_init();
     start_upload_task();
 }

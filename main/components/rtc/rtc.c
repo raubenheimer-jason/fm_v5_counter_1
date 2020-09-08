@@ -9,7 +9,7 @@ static uint8_t bcd_to_bin_24h(uint8_t bcdHour);
 static void rtc_write_reg(uint8_t reg, uint8_t value);
 static uint8_t rtc_read_reg(uint8_t reg);
 static esp_err_t i2c_master_init(uint8_t scl_pin, uint8_t sda_pin);
-// static void set_rtc_alarm(uint8_t alarm_to_set);
+static void rtc_print_register(uint8_t reg_addr);
 
 static const char *TAG = "RTC";
 
@@ -36,227 +36,43 @@ const uint8_t ALARM_2_MINUTES_REGISTER_ADDR = 0x0B; /*  */
 const uint8_t CONTROL_REGISTER_ADDR = 0x0E;         /*  */
 const uint8_t STATUS_REGISTER_ADDR = 0x0F;          /*  */
 
-void rtc_print_alarm_registers(void)
-{
-    uint8_t status_reg_addr = 0x0B;
-    uint8_t test = rtc_read_reg(status_reg_addr);
-    printf("0x0B: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(test));
-
-    status_reg_addr += 1;
-    test = rtc_read_reg(status_reg_addr);
-    printf("0x0C: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(test));
-
-    status_reg_addr += 1;
-    test = rtc_read_reg(status_reg_addr);
-    printf("0x0D: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(test));
-}
-
-void rtc_reset_alarm(uint8_t alarm_to_clear)
-{
-    // first need to read status register
-    int ret;
-    i2c_cmd_handle_t cmd1 = i2c_cmd_link_create();
-
-    // Start
-    i2c_master_start(cmd1);
-
-    // Master write slave address + write (0) [need to write register pointer, where to read from]
-    i2c_master_write_byte(cmd1, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
-
-    // Ack from slave
-
-    // Send address from where to read
-    i2c_master_write_byte(cmd1, STATUS_REGISTER_ADDR, ACK_CHECK_EN);
-
-    // Ack from slave
-
-    // Repeated start
-    i2c_master_start(cmd1);
-
-    // Master write slave address + read (1)
-    i2c_master_write_byte(cmd1, DS3231_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
-
-    // Ack from slave
-
-    // Master read data from slave
-    uint8_t status_reg_value;
-    i2c_master_read_byte(cmd1, &status_reg_value, I2C_MASTER_ACK);
-
-    // Ack from master
-
-    // .... repeat until all necessary registers have been read
-
-    // NACK from master
-
-    // STOP from master
-    i2c_master_stop(cmd1);
-
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd1, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd1);
-
-    // then clear the desired alarm bit
-
-    printf("status register: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_reg_value));
-
-    status_reg_value &= ~((uint8_t)1 << (alarm_to_clear - 1)); // clearing bit 0 or 1
-
-    printf("new status register: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_reg_value));
-
-    i2c_cmd_handle_t cmd2 = i2c_cmd_link_create();
-
-    // Start
-    i2c_master_start(cmd2);
-
-    // Master write slave address + write (0) [need to write register pointer, where to read from]
-    i2c_master_write_byte(cmd2, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
-
-    // Ack from slave
-
-    // Send address from where to read
-    i2c_master_write_byte(cmd2, STATUS_REGISTER_ADDR, ACK_CHECK_EN);
-
-    // Ack from slave
-
-    // Repeated start
-    i2c_master_start(cmd2);
-
-    // Master write slave address + read (1)
-    i2c_master_write_byte(cmd2, DS3231_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
-
-    // Ack from slave
-
-    // Master read data from slave
-    i2c_master_read_byte(cmd2, &status_reg_value, I2C_MASTER_ACK);
-
-    // Ack from master
-
-    // .... repeat until all necessary registers have been read
-
-    // NACK from master
-
-    // STOP from master
-    i2c_master_stop(cmd2);
-
-    printf("here??\n");
-
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd2, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd2);
-
-    printf("function done??\n");
-}
-
+/**
+ * RTC setup
+ */
 esp_err_t rtc_begin(uint8_t scl_pin, uint8_t sda_pin)
 {
-    // Init I2C
-    i2c_master_init(scl_pin, sda_pin);
+    esp_err_t res = i2c_master_init(scl_pin, sda_pin);
+    // could set alarms, etc. here
 
-    // Set alarm registers to trigger interrupt every minute
-    // set_rtc_alarm(2);
     ESP_LOGI(TAG, "RTC begin done");
 
-    return ESP_OK;
-}
-
-void rtc_print_status_register(void)
-{
-    const uint8_t status_reg_addr = 0x0F;
-
-    char test = rtc_read_reg(status_reg_addr);
-
-    printf("status register: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(test));
+    return res;
 }
 
 /**
- * Sets the RTC alarm to trigger the interrupt once per minute (00 seconds of every minute)
+ * Print the control register value to the console in binary format
  */
-// static esp_err_t set_rtc_alarm(void)
-// static void set_rtc_alarm(uint8_t alarm_to_set)
-void set_rtc_alarm(uint8_t alarm_to_set)
+void rtc_print_control_register(void)
 {
-    // Set ALARM 2 REGISTER MASK BITS (BIT 7)
-    // 0Bh (A2M2 = 1)
-    // 0Ch (A2M3 = 1)
-    // 0Dh (A2M4 = 1)
+    rtc_print_register(CONTROL_REGISTER_ADDR);
+}
 
-    int ret;
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+/**
+ * Print the status register value to the console in binary format
+ */
+void rtc_print_status_register(void)
+{
+    rtc_print_register(STATUS_REGISTER_ADDR);
+}
 
-    // Master start
-    i2c_master_start(cmd);
+/**
+ * Print a single register to the console in binary format
+ */
+static void rtc_print_register(uint8_t reg_addr)
+{
+    char reg_val = rtc_read_reg(reg_addr);
 
-    // Master send slave address + write (0)
-    i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
-
-    // Slave send ACK
-
-    // Master send address
-    i2c_master_write_byte(cmd, ALARM_2_MINUTES_REGISTER_ADDR, ACK_CHECK_EN);
-
-    // Slave send ACK
-
-    // Master send data
-
-    uint8_t alarm_2_byte = 0b10000000; // only intrested in setting BIT 7 of each register
-
-    i2c_master_write_byte(cmd, alarm_2_byte, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, alarm_2_byte, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, alarm_2_byte, ACK_CHECK_EN);
-
-    // Slave send ACK
-
-    // .... repeat
-
-    // Master send stop
-    i2c_master_stop(cmd);
-
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
-
-    if (ret == ESP_OK)
-    {
-        printf("successfully set rtc alarm 2 registers\n");
-    }
-
-    // Need  to set the control register
-    cmd = i2c_cmd_link_create();
-
-    // Master start
-    i2c_master_start(cmd);
-
-    // Master send slave address + write (0)
-    i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
-
-    // Slave send ACK
-
-    // Master send address
-    i2c_master_write_byte(cmd, CONTROL_REGISTER_ADDR, ACK_CHECK_EN);
-
-    // Slave send ACK
-
-    // Master send data
-
-    uint8_t control_register_value = 0b00011100 | (1 << (alarm_to_set - 1));
-
-    printf("control_register_value__: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(control_register_value));
-
-    i2c_master_write_byte(cmd, control_register_value, ACK_CHECK_EN);
-
-    // Slave send ACK
-
-    // .... repeat
-
-    // Master send stop
-    i2c_master_stop(cmd);
-
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
-
-    if (ret == ESP_OK)
-    {
-        printf("successfully set rtc control register\n");
-    }
-
-    rtc_reset_alarm(alarm_to_set);
+    printf("reg [%#08x]: " BYTE_TO_BINARY_PATTERN "\n", reg_addr, BYTE_TO_BINARY(reg_val));
 }
 
 void rtc_test(void)
@@ -302,17 +118,8 @@ void rtc_test(void)
  * 
  * @TODO: Check the status register Bit 7: Oscillator Stop Flag (OSF)
  */
-// uint32_t rtc_get_unix(i2c_port_t i2c_num) //, uint32_t *unix)
-uint32_t rtc_get_unix() //, uint32_t *unix)
+uint32_t rtc_get_unix()
 {
-    // uint8_t *seconds = NULL;
-    // uint8_t *minutes = NULL;
-    // uint8_t *hours = NULL;
-    // uint8_t *day = NULL;
-    // uint8_t *date = NULL;
-    // uint8_t *month = NULL;
-    // uint8_t *year = NULL;
-
     uint8_t seconds_reg = 0;
     uint8_t minutes_reg = 0;
     uint8_t hours_reg = 0;
@@ -338,7 +145,6 @@ uint32_t rtc_get_unix() //, uint32_t *unix)
     // Ack from slave
 
     // Repeated start
-    // i2c_master_write_byte(cmd, I2C_CMD_RESTART, ACK_CHECK_EN);
     i2c_master_start(cmd);
 
     // Master write slave address + read (1)
@@ -377,7 +183,6 @@ uint32_t rtc_get_unix() //, uint32_t *unix)
     // STOP from master
     i2c_master_stop(cmd);
 
-    // ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
@@ -390,26 +195,18 @@ uint32_t rtc_get_unix() //, uint32_t *unix)
 
     if (ret == ESP_OK)
     {
-        printf("DID IT WORK???\n");
+        bool print_info = false;
 
-        /*
-            uint8_t *seconds = NULL;
-            uint8_t *minutes = NULL;
-            uint8_t *hours = NULL;
-            uint8_t *day = NULL;
-            uint8_t *date = NULL;
-            uint8_t *month = NULL;
-            uint8_t *year = NULL;
-
-        */
-
-        printf("seconds: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(seconds_reg));
-        printf("minutes: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(minutes_reg));
-        printf("hours: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(hours_reg));
-        printf("day: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(dow_reg));
-        printf("date: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(date_reg));
-        printf("month: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(month_reg));
-        printf("year: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(year_reg));
+        if (print_info)
+        {
+            printf("seconds: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(seconds_reg));
+            printf("minutes: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(minutes_reg));
+            printf("hours: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(hours_reg));
+            printf("day: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(dow_reg));
+            printf("date: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(date_reg));
+            printf("month: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(month_reg));
+            printf("year: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(year_reg));
+        }
 
         sec = bcd_to_uint8(seconds_reg & 0x7F);
         min = bcd_to_uint8(minutes_reg);
@@ -419,13 +216,15 @@ uint32_t rtc_get_unix() //, uint32_t *unix)
         mon = bcd_to_uint8(month_reg & 0x7f);
         year = bcd_to_uint8(year_reg) + 2000;
 
-        printf("seconds: %d\n", sec);
-        printf("minutes: %d\n", min);
-        printf("hours: %d\n", hour);
-        printf("date: %d\n", date);
-        printf("month: %d\n", mon);
-        printf("year: %d\n", year);
-
+        if (print_info)
+        {
+            printf("seconds: %d\n", sec);
+            printf("minutes: %d\n", min);
+            printf("hours: %d\n", hour);
+            printf("date: %d\n", date);
+            printf("month: %d\n", mon);
+            printf("year: %d\n", year);
+        }
         struct tm my_time;
 
         // time values to set
@@ -446,23 +245,14 @@ uint32_t rtc_get_unix() //, uint32_t *unix)
     return 0;
 }
 
-// esp_err_t rtc_set_date_time(i2c_port_t i2c_num, uint32_t *unix)
+/**
+ * Set RTC date and time from Unix
+ */
 esp_err_t rtc_set_date_time(uint32_t *unix)
 {
-    // *unix = 1597999965;
     struct tm my_time;
 
     my_time = *gmtime((time_t *)unix);
-
-    // printf("sec: %d\n", my_time.tm_sec);
-    // printf("min: %d\n", my_time.tm_min);
-    // printf("hour: %d\n", my_time.tm_hour);
-    // printf("date: %d\n", my_time.tm_mday);
-    // printf("month: %d\n", my_time.tm_mon);
-    // printf("year: %d\n", my_time.tm_year);
-    // printf("dow: %d\n", my_time.tm_wday);
-
-    // return ESP_OK;
 
     // time values to set
     uint8_t seconds_time = my_time.tm_sec;
@@ -483,9 +273,8 @@ esp_err_t rtc_set_date_time(uint32_t *unix)
     uint8_t month_byte = 0b00001111;
     uint8_t year_byte = 0b00001111;
 
-    /*
-            SET TIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    */
+    //______________________________________________________________________________________________
+    // Set time
 
     seconds_byte = ((seconds_time / 10) << 4) | (seconds_time % 10);
     printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(seconds_byte), seconds_time);
@@ -540,7 +329,6 @@ esp_err_t rtc_set_date_time(uint32_t *unix)
     // Master send stop
     i2c_master_stop(cmd);
 
-    // ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
@@ -552,16 +340,25 @@ esp_err_t rtc_set_date_time(uint32_t *unix)
     return ret;
 }
 
+/**
+ * Convert BCD to uint8_t
+ */
 static uint8_t bcd_to_uint8(uint8_t val)
 {
     return val - 6 * (val >> 4);
 }
 
+/**
+ * Convert uint8_t to BCD
+ */
 static uint8_t uint8_to_bcd(uint8_t val)
 {
     return val + 6 * (val / 10);
 }
 
+/**
+ * Convert BCD to binary for 24h time (I think...??)
+ */
 static uint8_t bcd_to_bin_24h(uint8_t bcdHour)
 {
     uint8_t hour;
@@ -583,87 +380,47 @@ static uint8_t bcd_to_bin_24h(uint8_t bcdHour)
     return hour;
 }
 
-// static void rtc_write_reg(i2c_port_t i2c_num, uint8_t address, uint8_t reg, uint8_t value)
-// static void rtc_write_reg(uint8_t address, uint8_t reg, uint8_t value)
-static void rtc_write_reg(uint8_t reg, uint8_t value)
+/**
+ * Write to a single register
+ */
+static void rtc_write_reg(uint8_t reg_addr, uint8_t value)
 {
-    // i2c_start(dsBus);
-    // i2c_writeByte(dsBus, RTC_Write);
-    // i2c_writeByte(dsBus, reg);
-    // i2c_writeByte(dsBus, value);
-    // i2c_stop(dsBus);
-
     int ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, reg, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr, ACK_CHECK_EN);
     i2c_master_write_byte(cmd, value, ACK_CHECK_EN);
     i2c_master_stop(cmd);
 
-    // ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
-
-    // if (ret != ESP_OK)
-    // {
-    //     ESP_LOGE(TAG, "reg_write error");
-    // }
-
-    // if (ret == ESP_OK)
-    // {
-    //     printf("write success\n");
-    // }
-    // else
-    // {
-    //     printf("write ret: NOT OK\n");
-    // }
 }
 
-// static uint8_t rtc_read_reg(i2c_port_t i2c_num, uint8_t address, uint8_t reg)
-// static uint8_t rtc_read_reg(uint8_t address, uint8_t reg)
-static uint8_t rtc_read_reg(uint8_t reg)
+/**
+ * Read a single register value
+ */
+static uint8_t rtc_read_reg(uint8_t reg_addr)
 {
     uint8_t value = 0;
-
-    // i2c_start(dsBus);
-    // i2c_writeByte(dsBus, RTC_Write);
-    // i2c_writeByte(dsBus, reg);
-    // i2c_start(dsBus);
-    // i2c_writeByte(dsBus, RTC_Read);
-    // value = i2c_readByte(dsBus, 1);
-    // i2c_stop(dsBus);
 
     int ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 
     int i = 0;
-    // printf("here %d\n", i++);
 
-    // Start
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, reg, ACK_CHECK_EN);
-    // i2c_master_write_byte(cmd, I2C_CMD_RESTART, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr, ACK_CHECK_EN);
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
     i2c_master_read_byte(cmd, &value, I2C_MASTER_ACK);
     i2c_master_stop(cmd);
 
-    // ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
-    // printf("here %d\n", i++);
-
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1500 / portTICK_RATE_MS);
-    // printf("here %d\n", i++);
-
     i2c_cmd_link_delete(cmd);
-    // printf("here %d\n", i++);
 
-    // if (ret == ESP_OK)
-    // {
-    //     printf("read success\n");
-    // }
     return value;
 }
 
