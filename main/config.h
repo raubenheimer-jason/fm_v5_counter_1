@@ -27,4 +27,13 @@ const uint8_t I2C_SDA_PIN = 39;
 // Time
 const uint32_t last_known_unix = 1598008484;
 
+// FRAM SPI
+// pins
+const uint8_t SPI_MOSI_PIN = 36;
+const uint8_t SPI_MISO_PIN = 34;
+const uint8_t SPI_CLK_PIN = 35;
+const uint8_t SPI_CS_PIN = 33;
+// host
+const uint8_t FRAM_HOST = SPI2_HOST;
+
 #endif // _CONFIG_H_

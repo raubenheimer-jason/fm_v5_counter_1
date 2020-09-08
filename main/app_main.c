@@ -23,6 +23,7 @@
 #include "freertos/queue.h"
 
 #include "components/rtc/rtc.h"
+#include "components/fram/fram.h"
 
 #include <time.h>
 
@@ -226,6 +227,71 @@ static void gpio_interrupt_init(void)
     gpio_isr_handler_add(COUNTER_PIN, counter_isr, (void *)COUNTER_PIN);
 }
 
+static void fram_spi_init()
+{
+    spi_device_handle_t spi_device;
+
+    esp_err_t ret;
+    ESP_LOGI(TAG, "Initializing bus SPI...");
+    spi_bus_config_t buscfg = {
+        .mosi_io_num = SPI_MOSI_PIN,
+        .miso_io_num = SPI_MISO_PIN,
+        .sclk_io_num = SPI_CLK_PIN,
+        // .quadwp_io_num = -1,
+        // .quadhd_io_num = -1,
+        // .max_transfer_sz = 128,
+    };
+    //Initialize the SPI bus
+    ret = spi_bus_initialize(FRAM_HOST, &buscfg, 0);
+    ESP_ERROR_CHECK(ret);
+    printf("spi_bus_initialize ret: %d\n", ret);
+
+    spi_device_interface_config_t devcfg = {
+        .command_bits = 8,
+        .address_bits = 24,
+        // .dummy_bits = 8,
+        .mode = 0, //SPI mode 0
+        .duty_cycle_pos = 0,
+        .cs_ena_pretrans = 1,
+        .cs_ena_posttrans = 1,
+        .clock_speed_hz = 1 * 1000 * 1000, //Clock out at 10 MHz
+        .input_delay_ns = 0,
+        .spics_io_num = SPI_CS_PIN, //CS pin
+        // .spics_io_num = -1,
+        .queue_size = 2, //We want to be able to queue 7 transactions at a time
+        .flags = SPI_DEVICE_HALFDUPLEX,
+    };
+    //Attach the FRAM to the SPI bus
+    ret = spi_bus_add_device(FRAM_HOST, &devcfg, &spi_device);
+    ESP_ERROR_CHECK(ret);
+    printf("spi_bus_add_device ret: %d\n", ret);
+
+    // cs_init();
+
+    // vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    uint8_t status_reg = read_status_register(spi_device);
+    printf("\n---------------------\n");
+    // printf("status reg raw:\t%d\n", status_reg);
+    printf("status reg:\t" BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_reg));
+
+    uint8_t byte_to_write = 0b00110011;
+    uint32_t address_to_write = 100;
+
+    // fram_write_byte(spi_device, address_to_write, byte_to_write);
+
+    uint8_t test_byte = fram_read_byte(spi_device, address_to_write);
+    printf("\n---------------------\n");
+    // printf("write byte 0:\t" BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(byte_to_write));
+    printf("read byte 0:\t" BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(test_byte));
+
+    while (1)
+    {
+        // Add your main loop handling code here.
+        vTaskDelay(1);
+    }
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -240,6 +306,10 @@ void app_main(void)
     esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
+
+    fram_spi_init();
+
+    printf("SHOULDNT GET HERE!!!\n");
 
     // initialise semaphore
     gatekeeper = xSemaphoreCreateMutex();
