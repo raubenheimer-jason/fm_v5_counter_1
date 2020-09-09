@@ -244,12 +244,78 @@ void app_main(void)
 
     // fram_spi_init(SPI_MOSI_PIN, SPI_MISO_PIN, SPI_CLK_PIN, SPI_CS_PIN, FRAM_HOST);
     fram_spi_init();
-    test();
+    // test();
 
-    // for (;;)
-    // {
-    //     vTaskDelay(1);
-    // }
+    fram_reset();
+
+    // uint32_t max = 5;
+    uint32_t start = 0;
+    uint32_t max = 15999;
+    // uint32_t max = 1500;
+
+    for (uint32_t i = start; i < max; i++)
+    {
+        uint32_t unix = i;
+        uint32_t count = i;
+
+        uint64_t tel = (uint64_t)unix << 32 | count;
+
+        // write_telemetry((uint64_t)0);
+        write_telemetry(tel);
+
+        // printf("delay (i = %d)  \ttel = %d  \t", i, (uint32_t)tel);
+        // display_top_bottom();
+
+        // if (i % 1000 == 0 && i > 0)
+        // {
+        //     vTaskDelay(10);
+        // }
+
+        if ((i % 1000 == 0 && i > 0) || i == (max - 1))
+        {
+            vTaskDelay(2);
+            printf("delay (i = %d)\tunix = %d  count = %d  \t", i, unix, count);
+            display_top_bottom();
+        }
+    }
+    printf("\n");
+
+    check_state();
+
+    printf("telemetry written\n\n");
+
+    for (uint32_t i = start; i < max; i++)
+    {
+        uint64_t tel = read_telemetry();
+
+        // printf("delay (i = %d)  \ttel = %d\n", i, (uint32_t)tel);
+
+        delete_last_read_telemetry(tel);
+
+        // if (i % 1000 == 0 && i > 0)
+        // {
+        //     vTaskDelay(10);
+        // }
+
+        if ((i % 1000 == 0 && i > 0) || i == (max - 1))
+        {
+
+            uint32_t unix = tel >> 32;
+            uint32_t count = (uint32_t)tel;
+            vTaskDelay(2);
+            printf("delay (i = %d)\tunix = %d  count = %d  \t", i, unix, count);
+            display_top_bottom();
+        }
+    }
+    printf("\n");
+
+    check_state();
+    printf("telemetry read\n");
+
+    for (;;)
+    {
+        vTaskDelay(1);
+    }
 
     printf("** FRAM stuff done **\n");
 

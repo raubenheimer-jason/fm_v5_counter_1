@@ -12,7 +12,16 @@
 void fram_spi_init();
 void test();
 
-void set_bottom(uint32_t bottom_addr);
-void set_top(uint32_t top_addr);
+uint32_t get_stored_messages_count();
+
+bool delete_last_read_telemetry(uint64_t d_to_del);
+uint64_t read_telemetry();
+bool write_telemetry(uint64_t telemetry);
+
+void fram_reset();
+
+bool check_state();
+
+void display_top_bottom();
 
 #endif // _FRAM_H_
