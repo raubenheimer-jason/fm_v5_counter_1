@@ -301,11 +301,14 @@ uint32_t rtc_get_unix()
 /**
  * Set RTC date and time from Unix
  */
-esp_err_t rtc_set_date_time(uint32_t *unix)
+// esp_err_t rtc_set_date_time(uint32_t *unix)
+esp_err_t rtc_set_date_time(const time_t *unix)
+// esp_err_t rtc_set_date_time(uint32_t unix)
 {
     struct tm my_time;
 
-    my_time = *gmtime((time_t *)unix);
+    // my_time = *gmtime((time_t *)unix);
+    my_time = *gmtime(unix);
 
     // time values to set
     uint8_t seconds_time = my_time.tm_sec;
