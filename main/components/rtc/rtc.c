@@ -169,12 +169,13 @@ uint32_t rtc_get_unix()
 {
     // First check the Oscillator Stop Flag (BIT 7 of the Status Regster)
     uint8_t status_register_value = rtc_read_reg(STATUS_REGISTER_ADDR);
-    printf("status_register_value: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
+    // printf("status_register_value: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
 
     if ((status_register_value >> 7) == 1)
     {
         ESP_LOGW(TAG, "Oscillator Stop Flag == 1, time may be invalid");
         // TODO: Return 0 -------------------------------------------------------------------------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        return 0;
     }
 
     uint8_t seconds_reg = 0;
@@ -300,6 +301,8 @@ uint32_t rtc_get_unix()
 
 /**
  * Set RTC date and time from Unix
+ * 
+ * Also sets the OSF in the status register (0x0F)
  */
 // esp_err_t rtc_set_date_time(uint32_t *unix)
 esp_err_t rtc_set_date_time(const time_t *unix)
@@ -318,7 +321,7 @@ esp_err_t rtc_set_date_time(const time_t *unix)
     uint8_t date_time = my_time.tm_mday;
     uint8_t month_time = my_time.tm_mon + 1;
     uint8_t year_time = my_time.tm_year;
-    printf("year: %d\n", year_time);
+    // printf("year: %d\n", year_time);
 
     // byte values to write to registers
     uint8_t seconds_byte = 0b0000111;
@@ -333,25 +336,31 @@ esp_err_t rtc_set_date_time(const time_t *unix)
     // Set time
 
     seconds_byte = ((seconds_time / 10) << 4) | (seconds_time % 10);
-    printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(seconds_byte), seconds_time);
 
     minutes_byte = ((minutes_time / 10) << 4) | (minutes_time % 10);
-    printf("minutes: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(minutes_byte), minutes_time);
 
     hours_byte = 1 << 6;                                                               // set 24 hour format
     hours_byte = hours_byte | ((hours_time >= 20 ? 1 : 0) << 5);                       // set 1 if hour is 20-23
     hours_byte = hours_byte | (((hours_time >= 10 && hours_time <= 19) ? 1 : 0) << 4); // set 1 if hour >= 10 and <= 19
     hours_byte = hours_byte | ((hours_time % 20) % 10);                                // value of the last digit
-    printf("hours: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(hours_byte), hours_time);
 
     date_byte = ((date_time / 10) << 4) | (date_time % 10);
-    printf("date: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(date_byte), date_time);
 
     month_byte = ((month_time / 10) << 4) | (month_time % 10);
-    printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(month_byte), month_time);
 
     year_byte = (((year_time % 100) / 10) << 4) | ((year_time % 100) % 10);
-    printf("year: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(year_byte), year_time);
+
+    bool print_info = false;
+
+    if (print_info)
+    {
+        printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(seconds_byte), seconds_time);
+        printf("minutes: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(minutes_byte), minutes_time);
+        printf("hours: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(hours_byte), hours_time);
+        printf("date: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(date_byte), date_time);
+        printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(month_byte), month_time);
+        printf("year: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(year_byte), year_time);
+    }
 
     int ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -390,7 +399,28 @@ esp_err_t rtc_set_date_time(const time_t *unix)
 
     if (ret == ESP_OK)
     {
-        printf("successfully set rtc time??\n");
+        // printf("successfully set rtc time??\n");
+
+        ESP_LOGI(TAG, "update rtc time success!");
+
+        // Clear OSF in status register
+
+        // Status register
+        uint8_t status_register_value = rtc_read_reg(STATUS_REGISTER_ADDR);
+
+        // printf("--------------->>  old status register: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
+
+        // clear OSF (BIT 7)
+        status_register_value &= ~((uint8_t)1 << 7);
+
+        // printf("--------------->>  new status register: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
+
+        // write new register value
+        rtc_write_reg(STATUS_REGISTER_ADDR, status_register_value);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "error updating rtc time");
     }
 
     return ret;

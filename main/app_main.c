@@ -472,7 +472,7 @@ void wifi_init_sta(void)
 
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ WIFI
 
-// =========================================================================== NTP
+// ================================================================================================= NTP
 
 void time_sync_notification_cb(struct timeval *tv)
 {
@@ -488,9 +488,9 @@ void time_sync_notification_cb(struct timeval *tv)
 
     printf("unix from system time: %d\n", (uint32_t)unix_now);
 
-    const uint8_t time_tolerance = 2; // seconds
+    const uint8_t time_tolerance = 1; // seconds (actually 2 because it isn't = to)
 
-    if (rtc_unix < ((uint32_t)unix_now + time_tolerance) || rtc_unix > ((uint32_t)unix_now - time_tolerance))
+    if (rtc_unix < ((uint32_t)unix_now - time_tolerance) || rtc_unix > ((uint32_t)unix_now + time_tolerance))
     {
         ESP_LOGW(TAG, "RTC time needs to be updated");
         time(&unix_now); // make sure unix_now is up to date
@@ -519,7 +519,7 @@ static void initialize_sntp(void)
     sntp_init();
 }
 
-// =========================================================================== NTP
+// ================================================================================================= NTP
 
 void app_main(void)
 {
@@ -567,7 +567,7 @@ void app_main(void)
 
     uint32_t rtc_unix = rtc_get_unix();
 
-    printf("unix from rtc: %d\n", rtc_unix);
+    // printf("unix from rtc: %d\n", rtc_unix);
 
     if (rtc_unix > last_known_unix) // OSF == 0 and time is probably valid
     {
@@ -577,14 +577,15 @@ void app_main(void)
         tv.tv_usec = 0;
         settimeofday(&tv, NULL);
 
-        time_t unix_now;
-        time(&unix_now);
+        // time_t unix_now;
+        // time(&unix_now);
 
-        printf("system time: %d\n", (uint32_t)unix_now);
+        // printf("system time: %d\n", (uint32_t)unix_now);
     }
 
-    // uint32_t unix_to_set = 1599553793;
+    // time_t unix_to_set = 1599553793;
     // rtc_set_date_time(&unix_to_set);
+
     rtc_config_alarm();
     rtc_clear_alarm();
 
