@@ -204,7 +204,7 @@ uint64_t read_telemetry()
     if (bottom == top)
     {
         // Nothing to read?
-        ESP_LOGW(TAG, "no telemetry to read");
+        // ESP_LOGW(TAG, "no telemetry to read");
         return 0;
     }
 
@@ -236,19 +236,7 @@ bool delete_last_read_telemetry(uint64_t d_to_del)
     }
 
     // need to check that the intended data is deleted - dont just delete "blind"
-
-    uint64_t tel = read_telemetry();
-
-    uint32_t unix = tel >> 32;
-    uint32_t count = (uint32_t)tel;
-
-    printf("read telemetry in delete --> unix: %d, count: %d\n", unix, count);
-    unix = d_to_del >> 32;
-    count = (uint32_t)d_to_del;
-    printf("d_to_del       in delete --> unix: %d, count: %d\n", unix, count);
-
-    // if (read_telemetry() == d_to_del)
-    if (tel == d_to_del)
+    if (read_telemetry() == d_to_del)
     {
         // Intended data to delete is in the next position in fram - continue the delete
         uint32_t new_bottom = bottom + telemetry_bytes;
