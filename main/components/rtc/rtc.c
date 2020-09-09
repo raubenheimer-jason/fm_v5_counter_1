@@ -174,6 +174,7 @@ uint32_t rtc_get_unix()
     if ((status_register_value >> 7) == 1)
     {
         ESP_LOGW(TAG, "Oscillator Stop Flag == 1, time may be invalid");
+        // TODO: Return 0 -------------------------------------------------------------------------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!
     }
 
     uint8_t seconds_reg = 0;

@@ -50,6 +50,7 @@ bool rtc_alarm_flag = false;
 
 void Fram_Task_Code(void *pvParameters)
 {
+    // uint64_t previously_sent_telemetry = 1;
     for (;;)
     {
         if (rtc_alarm_flag == true)
@@ -57,6 +58,10 @@ void Fram_Task_Code(void *pvParameters)
             ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
             rtc_alarm_flag = false;
             rtc_clear_alarm();
+            // uint32_t unix_now = rtc_get_unix();
+            // printf("unix now: %d\n", unix_now);
+            // printf("count: %d\n", count);
+            // count = 0;
         }
 
         uint64_t telemetry_to_store = 0;
@@ -64,8 +69,11 @@ void Fram_Task_Code(void *pvParameters)
         {
             ESP_LOGI(TAG, "received telemetry_to_store");
 
-            uint32_t unix = telemetry_to_store >> 32;
-            printf("unix: %d\n", unix);
+            // uint32_t telemetry_unix = telemetry_to_store >> 32;
+            // uint32_t telemetry_count = (uint32_t)telemetry_to_store;
+
+            // printf("telemetry_unix:  %d\n", telemetry_unix);
+            // printf("telemetry_count: %d\n", telemetry_count);
 
             // Store telemetry in FRAM
             if (write_telemetry(telemetry_to_store) == false)
@@ -83,11 +91,21 @@ void Fram_Task_Code(void *pvParameters)
         {
             if (telemetry_to_delete > last_known_unix)
             {
+                // uint32_t telemetry_unix = telemetry_to_store >> 32;
+                // uint32_t telemetry_count = (uint32_t)telemetry_to_store;
+
+                // printf("telemetry_unix:  %d\n", telemetry_unix);
+                // printf("telemetry_count: %d\n", telemetry_count);
+
                 uint32_t unix = telemetry_to_delete >> 32;
                 uint32_t count = (uint32_t)telemetry_to_delete;
 
                 // Store telemetry in FRAM
                 if (delete_last_read_telemetry(telemetry_to_delete) == true)
+                // {
+                //     ESP_LOGE(TAG, "error deleting telemetry (unix: %d, count: %d)", unix, count);
+                // }
+                // else
                 {
                     ESP_LOGI(TAG, "telemetry successfully deleted from FRAM");
                 }
@@ -96,7 +114,7 @@ void Fram_Task_Code(void *pvParameters)
 
         uint64_t telemetry_to_upload = read_telemetry();
 
-        if (telemetry_to_upload > 0)
+        if (telemetry_to_upload > 0) // && telemetry_to_upload != previously_sent_telemetry)
         {
             ESP_LOGI(TAG, "send telemetry from Fram_Task to Upload_Task");
 
@@ -107,6 +125,7 @@ void Fram_Task_Code(void *pvParameters)
                 if (xQueueSend(upload_queue, &telemetry_to_upload, 0))
                 {
                     ESP_LOGI(TAG, "telemetry sent to Upload_Task");
+                    // previously_sent_telemetry = telemetry_to_upload;
                 }
                 else
                 {
@@ -118,8 +137,16 @@ void Fram_Task_Code(void *pvParameters)
                 ESP_LOGE(TAG, "error in data read from fram");
             }
         }
+        else
+        {
+            ESP_LOGW(TAG, "telemetry_to_upload == 0");
+        }
 
         vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+        // rtc_print_status_register();
+
+        // vTaskDelay(1500 / portTICK_PERIOD_MS);
     }
 }
 
@@ -131,6 +158,28 @@ void Upload_Task_Code(void *pvParameters)
 {
     printf("ssid: %s\n", wifi_ssid_from_file);
     printf("pass: %s\n", wifi_password_from_file);
+
+    // printf("wifi led pin: %d\n", WIFI_LED_PIN);
+    // printf("mqtt led pin: %d\n", MQTT_LED_PIN);
+
+    // gpio_config_t wifi_led_config = {
+    //     .pin_bit_mask = GPIO_OUTPUT_PIN_BITMASK,
+    //     .mode = GPIO_MODE_OUTPUT,
+    //     .pull_up_en = 0,
+    //     .pull_down_en = 0,
+    //     .intr_type = GPIO_INTR_DISABLE,
+    // };
+
+    // gpio_config_t mqtt_led_config = {
+    //     .pin_bit_mask = GPIO_OUTPUT_PIN_BITMASK,
+    //     .mode = GPIO_MODE_OUTPUT,
+    //     .pull_up_en = 0,
+    //     .pull_down_en = 0,
+    //     .intr_type = GPIO_INTR_DISABLE,
+    // };
+
+    // gpio_config(&wifi_led_config);
+    // gpio_config(&mqtt_led_config);
 
     bool need_to_upload_flag = false;
     uint64_t previously_uploaded_telemetry = 0;
@@ -157,7 +206,7 @@ void Upload_Task_Code(void *pvParameters)
                 // uint64_t i;
                 // printf("\t\tt.addr: %" PRIu64 "\n", t.addr);
                 ESP_LOGW(TAG, "telemetry_to_upload == previously_uploaded_telemetry (unix: %d, count: %d)", unix_time, count);
-                if (xQueueSend(ack_queue, &telemetry_to_upload, 0))
+                if (xQueueSend(ack_queue, &telemetry_to_upload, portMAX_DELAY)) // SHOULD THIS BE MAX DELAY??????????????????
                 {
                     ESP_LOGI(TAG, "ack sent to Fram_Task");
                 }
@@ -179,20 +228,40 @@ void Upload_Task_Code(void *pvParameters)
             uint32_t count = (uint32_t)telemetry_to_upload;
 
             // Send telemetry to GCP here
+            // String telemetry = "{\"unix_timestamp\":" + String(unix_time) + ",\"value\":" + String(count) + "}";
 
-            char telemetry_buf[40]; // {"t":1596255206,"v":4294967295} --> 31 characters
+            // {"t":1596255206,"v":4294967295} --> 31 characters
+            char telemetry_buf[40];
             snprintf(telemetry_buf, 40, "{\"t\":%d,\"v\":%d}", (int)unix_time, (int)count);
 
             printf("%s\n", telemetry_buf);
 
             vTaskDelay(5000 / portTICK_PERIOD_MS);
 
-            // Just for now before we implement MQTT
+            // String telemetry = "{\"t\":" + String(unix_time) + ",\"v\":" + String(count) + "}";
+            // std::string telemetry = "{\"t\":" + String(unix_time) + ",\"v\":" + String(count) + "}";
+
+            // keep these split up (try prevent weird error where success was true but wifi had just turned off so the message wasnt sent)
+            // bool upload_success{false};
+            // // upload_success = publishTelemetry(telemetry);
+            // upload_success = publishTelemetry(telemetry.c_str());
+
+            // uint32_t upload_res{publishTelemetry(telemetry.c_str())};
+            // uint32_t upload_res{publishTelemetry(telemetry_buf)};
+
             bool upload_res = true;
 
             if (upload_res == true)
             {
+                // status.insert_upload_time(upload_res);
+                // success_count++;
+                // digitalWrite(aux_led_pin, HIGH);
+                // mqtt_last_connect_time = millis();
 
+                // // Serial.print(" |  [UPLOAD] SUCCESS! --> " + telemetry);
+                // ESP_LOGD(TAG, "UPLOAD SUCCESS! --> %s", telemetry_buf);
+                // // upload_decrement_sending_failed_count(mqtt_sending_failed_count);
+                // upload_decrement_sending_failed_count(http_sending_failed_count);
                 previously_uploaded_telemetry = telemetry_to_upload;
                 need_to_upload_flag = false;
 
@@ -202,14 +271,24 @@ void Upload_Task_Code(void *pvParameters)
                 //? if the power is lost after the telemetry is received from the queue, that's fine, the ack wouldnt have been sent to FRAM if the data hasn't been uploaded to GCP
                 //?   --> next time the device turns on, FRAM will send the same message back to UPLOAD because it didnt delete it because it didnt receive the ack
                 // Send ack to FRAM (the unix that was uploaded to GCP)
+                // if (!xQueueSend(ackQueue, &unix_time, 1000 / portTICK_PERIOD_MS)) //? dont think we need to wait here, if the queue is full there is a biggere problem...
                 if (!xQueueSend(ack_queue, &telemetry_to_upload, 1000 / portTICK_PERIOD_MS)) //? dont think we need to wait here, if the queue is full there is a biggere problem...
                 {
-                    ESP_LOGE(TAG, "adding to ackQueue failed !!! ");
+                    // Serial.print("[UPLOAD] adding to ackQueue failed !!!");
+                    ESP_LOGE(TAG, "adding to ackQueue failed !!! "); //-- %d", telemetry_to_upload);
                 }
             }
             else
             {
-                ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!!");
+                // fail_count++;
+                // TODO try connect to mqtt here if it fails..... probably lost the connection now we're stuck in the loop
+                // Serial.print("  |  [UPLOAD] SENDING FAILED !!!");
+                ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!!"); // -- %d      %.0f/%.0f (%.2f %)  |  fh: %d  min fh: %d", receive_telemetry, success_count, (success_count + fail_count), ((success_count / (fail_count + success_count)) * 100), xPortGetFreeHeapSize(), esp_get_minimum_free_heap_size());
+                // digitalWrite(aux_led_pin, LOW);
+                // upload_increment_sending_failed_count(mqtt_sending_failed_count);
+                // upload_increment_sending_failed_count(http_sending_failed_count);
+                // status.increment_telemetry_publish_fail_count();
+                // delay(10000);
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
         }
@@ -273,6 +352,7 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
         // send count and time data to Fram Task
 
         // get time from esp32
+        // uint32_t unix_now = 123456789;
         time_t unix_now;
         time(&unix_now);
 
@@ -289,7 +369,9 @@ static void IRAM_ATTR counter_isr(void *arg)
     if (xSemaphoreTake(gatekeeper, 200))
     {
         count++;
-        xSemaphoreGive(gatekeeper); // release count
+
+        // release count
+        xSemaphoreGive(gatekeeper);
     }
 }
 
@@ -351,7 +433,10 @@ void app_main(void)
 
     esp_log_level_set("APP_MAIN", ESP_LOG_VERBOSE);
 
+    // fram_spi_init(SPI_MOSI_PIN, SPI_MISO_PIN, SPI_CLK_PIN, SPI_CS_PIN, FRAM_HOST);
     fram_spi_init();
+
+    // printf("** FRAM stuff done **\n");
 
     // initialise semaphore
     gatekeeper = xSemaphoreCreateMutex();
@@ -368,36 +453,18 @@ void app_main(void)
     gpio_leds_init();
 
     start_fram_task();
+
+    // for (;;)
+    // {
+    //     vTaskDelay(100);
+    // }
+
     start_upload_task();
 
     rtc_begin(I2C_SCL_PIN, I2C_SDA_PIN);
 
-    /*
-        If RTC time is valid (OSF == 0), update system time from RTC
-            RTC time will be updated as soon as NTP callback is triggered (this is where the OSF is cleared in RTC)
-            If NTP callback isn't triggered often enough, RTC must update system time if system time is wrong
-    */
-
-    uint32_t rtc_unix = rtc_get_unix();
-
-    printf("unix from rtc: %d\n", rtc_unix);
-
-    if (rtc_unix > last_known_unix) // Both the OSF and time is probably valid
-    {
-        // Set system time from rtc
-        struct timeval tv;
-        tv.tv_sec = rtc_unix;
-        tv.tv_usec = 0;
-        settimeofday(&tv, NULL);
-
-        time_t unix_now;
-        time(&unix_now);
-
-        printf("system time: %d\n", (uint32_t)unix_now);
-    }
-
-    // uint32_t unix_to_set = 1599553793;
-    // rtc_set_date_time(&unix_to_set);
+    uint32_t unix_to_set = 1599553793;
+    rtc_set_date_time(&unix_to_set);
     rtc_config_alarm();
     rtc_clear_alarm();
 }

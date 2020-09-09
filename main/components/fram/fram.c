@@ -15,20 +15,10 @@ const uint8_t SPI_CS_PIN = 33;
 const uint8_t FRAM_HOST = SPI2_HOST;
 // data sizes etc.
 const uint8_t telemetry_bytes = 8;
-// ((8000-8)/ 8) == 999 --> so memory address limit top = 8000-8 = 7992
-// ((128,000-8)/ 8) == 15,999 -- > so memory address limit top = 128,000-8 = 127,992
+// ((128,000-16)/ 8) == 15,998 -- > so memory address limit top = 128,000 <-- doesn't really make sense? // ((8000-8)/ 8) == 999 --> so memory address limit top = 8000-8 = 7992
 const uint32_t limit_addr_top = 128000; // (15998x8 + 16)
 const uint8_t limit_addr_bottom = 8;    // using 32 bit addresses now
 
-/*
-((128000-4)x8) / 64 = 15999.5 telemetry messages
-round down to 15999
-15999 x 8 = 127992
-127992 + 4 = 127996
-
-check:
-(127996-4) / 4 = 31998 telemetry messages
-*/
 // --------------------------- FRAM CONFIG ---------------------------
 
 //SRAM opcodes
@@ -66,7 +56,11 @@ static void set_bottom(uint32_t bottom_addr);
 static void get_top_bottom();
 static void fram_internal_setup();
 
-// void fram_spi_init(const uint8_t mosi_pin, const uint8_t miso_pin, const uint8_t clk_pin, const uint8_t cs_pin, const uint8_t FRAM_HOST, const uint8_t telemetry_bytes, const uint32_t fram_limit_top, const uint8_t fram_limit_bottom)
+/**
+ * Initialises the SPI bus for the FRAM
+ * 
+ * Also calls "fram_internal_setup()"
+ */
 void fram_spi_init()
 {
     esp_err_t ret;
@@ -101,8 +95,6 @@ void fram_spi_init()
     ESP_ERROR_CHECK(ret);
 
     fram_internal_setup();
-
-    // get_top_bottom();
 }
 
 void display_top_bottom()
@@ -151,20 +143,8 @@ void test()
  */
 bool write_telemetry(uint64_t telemetry)
 {
-    // if (top > 127900 && top < 128500)
-    // {
-    //     printf("top = %d\n", top);
-    // }
-
-    if (((bottom == limit_addr_bottom) && (top == (limit_addr_top - limit_addr_bottom))) || (top == (bottom - telemetry_bytes))) // 7988 --> 8x999-4
+    if (((bottom == limit_addr_bottom) && (top == (limit_addr_top - limit_addr_bottom))) || (top == (bottom - telemetry_bytes)))
     {
-        // printf("bottom = %d\n", bottom);
-        // printf("limit_addr_bottom = %d\n", limit_addr_bottom);
-        // printf("top = %d\n", top);
-        // printf("(limit_addr_top - limit_addr_bottom) = %d\n", (limit_addr_top - limit_addr_bottom));
-        // printf("(bottom - telemetry_bytes) = %d\n", (bottom - telemetry_bytes));
-
-        // Serial.println("[FRAM_obj] memory full, return");
         ESP_LOGW(TAG, "memory full, return");
         return false; // the memory is full (minus 8 bytes... cant make it where top == bottom because that could also mean empty)
     }
@@ -173,7 +153,6 @@ bool write_telemetry(uint64_t telemetry)
     uint8_t shift = 56;
     for (uint32_t i = top; i < (top + telemetry_bytes); i++) // start writing at position "top", MSB first
     {
-        // printf("i = %d\n", i);
         uint8_t b = (uint8_t)(telemetry >> shift);
         fram_write_byte(i, b);
         shift -= telemetry_bytes;
@@ -204,7 +183,6 @@ uint64_t read_telemetry()
     if (bottom == top)
     {
         // Nothing to read?
-        ESP_LOGW(TAG, "no telemetry to read");
         return 0;
     }
 
@@ -230,30 +208,17 @@ bool delete_last_read_telemetry(uint64_t d_to_del)
 {
     if (bottom == top)
     {
-        // Serial.println("[FRAM_obj] memory empty, no data to delete, return");
         ESP_LOGW(TAG, "memory is empty, nothing to delete");
         return false; // memory is empty
     }
 
     // need to check that the intended data is deleted - dont just delete "blind"
-
-    uint64_t tel = read_telemetry();
-
-    uint32_t unix = tel >> 32;
-    uint32_t count = (uint32_t)tel;
-
-    printf("read telemetry in delete --> unix: %d, count: %d\n", unix, count);
-    unix = d_to_del >> 32;
-    count = (uint32_t)d_to_del;
-    printf("d_to_del       in delete --> unix: %d, count: %d\n", unix, count);
-
-    // if (read_telemetry() == d_to_del)
-    if (tel == d_to_del)
+    if (read_telemetry() == d_to_del)
     {
         // Intended data to delete is in the next position in fram - continue the delete
         uint32_t new_bottom = bottom + telemetry_bytes;
 
-        if (new_bottom > limit_addr_top) // it will never be = to
+        if (new_bottom > limit_addr_top) // it will never be = to. --> Are we sure with the new FRAM?
         {
             new_bottom = limit_addr_bottom;
         }
@@ -263,11 +228,13 @@ bool delete_last_read_telemetry(uint64_t d_to_del)
     }
     else
     {
-        // Serial.println("[FRAM_obj] d_to_del != next data in fram, return");
         return false;
     }
 }
 
+/**
+ * Returns the current number of stored telemetry messages
+ */
 uint32_t get_stored_messages_count()
 {
     uint32_t diff = 0;
@@ -289,7 +256,6 @@ uint32_t get_stored_messages_count()
     }
 
     uint32_t message_num = diff / telemetry_bytes; // integer division ??
-    // Serial.println("diff: " + String(diff) + "  message num: " + String(message_num));
 
     return message_num;
 }
@@ -304,8 +270,6 @@ void fram_reset()
     ESP_LOGW(TAG, "resetting FRAM (setting: top = bottom = limit_addr_bottom = %d)", limit_addr_bottom);
     set_top(limit_addr_bottom);
     set_bottom(limit_addr_bottom);
-    // set_top(100000);
-    // set_bottom(100000);
 }
 
 /**
@@ -331,13 +295,19 @@ bool check_state()
 
 // Private ------------------------------------------------------------
 
+/**
+ * Basic setup for FRAM
+ * 
+ * get_top_bottom() <-- reads the first 8 bytes and sets the local "top" and "bottom" variables
+ * check_state()    <-- Basic checks for errors, calls "fram_reset()" if there are any errors
+ *                          - fram_reset()  <-- sets "top" and "bottom" = limit_addr_bottom
+ */
 static void fram_internal_setup()
 {
     get_top_bottom();
 
     if (check_state() == false)
     {
-        // printf("fram_reset()\n");
         fram_reset();
     }
     ESP_LOGI(TAG, "internal setup complete");
@@ -371,11 +341,11 @@ static uint8_t read_status_register()
     return read_byte;
 }
 
-// Read byte from fram
+/**
+ * Read single byte from FRAM at the specified address
+ */
 static uint8_t fram_read_byte(const uint32_t address)
 {
-    // printf("\n--- fram read ---\n");
-
     uint8_t read_byte;
     esp_err_t res;
     spi_transaction_t t;
@@ -383,21 +353,20 @@ static uint8_t fram_read_byte(const uint32_t address)
     memset(&t, 0, sizeof(t));
     t.length = 8 * 4;
     t.cmd = READ;
-    // t.addr = (((address >> 16) | (address >> 8)) | address);
     t.addr = address;
     t.flags = SPI_TRANS_USE_RXDATA;
     t.rxlength = 8;
     res = spi_device_polling_transmit(spi_device, &t);
-    // printf("read res 1: %d\n", res);
     read_byte = t.rx_data[0];
 
     return read_byte;
 }
 
+/**
+ * Write single byte to FRAM at the specified address
+ */
 static void fram_write_byte(const uint32_t address, uint8_t data_byte)
 {
-    // printf("\n*** fram write ***\n");
-
     esp_err_t res;
     spi_transaction_t t;
 
@@ -405,40 +374,20 @@ static void fram_write_byte(const uint32_t address, uint8_t data_byte)
     t.length = 8;
     t.cmd = WREN;
     res = spi_device_polling_transmit(spi_device, &t);
-    // printf("write res 1: %d\n", res);
-
     memset(&t, 0, sizeof(t));
     t.cmd = WRITE;
-    // t.addr = (((address >> 16) | (address >> 8)) | address);
-
-    // t.addr = address >> 24;
-
-    // t.addr = address >> 16;
-    // t.addr |= address >> 8;
-    // t.addr |= address;
-
     t.addr = address;
-
-    // printf("\t\taddress: %d\n", address);
-
-    // uint64_t i;
-    // printf("\t\tt.addr: %" PRIu64 "\n", t.addr);
-
     t.tx_data[0] = data_byte;
     t.length = 8;
     t.flags = SPI_TRANS_USE_TXDATA;
     res = spi_device_polling_transmit(spi_device, &t);
-    // printf("write res 2: %d\n", res);
 }
 
+/**
+ * Set the top address in FRAM and local variable
+ */
 static void set_top(uint32_t top_addr)
 {
-    // uint8_t b0 = (uint8_t)(top_addr >> 8); // MSB first (bit 15 -> 8)
-    // uint8_t b1 = (uint8_t)top_addr;        // (bit 7 --> 0)
-
-    // fram_write_byte(2, b0);
-    // fram_write_byte(3, b1);
-
     uint8_t b0 = (uint8_t)(top_addr >> 24); // MSB  (bit 31 -> 24)
     uint8_t b1 = (uint8_t)(top_addr >> 16); //      (bit 23 -> 16)
     uint8_t b2 = (uint8_t)(top_addr >> 8);  //      (bit 15 -> 8)
@@ -449,56 +398,50 @@ static void set_top(uint32_t top_addr)
     fram_write_byte(6, b2);
     fram_write_byte(7, b3);
 
-    // Serial.println("[FRAM-obj] top: " + String(top));
-
     top = top_addr;
 }
+
+/**
+ * Set the bottom address in FRAM and local variable
+ */
 static void set_bottom(uint32_t bottom_addr)
 {
-    // uint8_t b0 = (uint8_t)(bottom_addr >> 8); // MSB first (bit 15 -> 8)
-    // uint8_t b1 = (uint8_t)bottom_addr;        // (bit 7 --> 0)
-
     uint8_t b0 = (uint8_t)(bottom_addr >> 24); // MSB   (bit 31 --> 24)
     uint8_t b1 = (uint8_t)(bottom_addr >> 16); //       (bit 23 --> 16)
     uint8_t b2 = (uint8_t)(bottom_addr >> 8);  //       (bit 15 --> 8)
     uint8_t b3 = (uint8_t)bottom_addr;         // LSB   (bit 7  --> 0)
-
-    // fram_write_byte(0, b0);
-    // fram_write_byte(1, b1);
 
     fram_write_byte(0, b0);
     fram_write_byte(1, b1);
     fram_write_byte(2, b2);
     fram_write_byte(3, b3);
 
-    // Serial.println("[FRAM-obj] bottom: " + String(bottom));
-
     bottom = bottom_addr;
 }
 
 /**
- * Gets the first 4 bytes of memory
+ * Gets the first 8 bytes of memory
  * 
- * The first 2 makes the bottom position
- * The 3rd and 4th make the top position
+ * The first 4 makes the bottom position
+ * The 5th to the 7th (inclusive) make the top position
  * 
- * @TODO: Use array and for loop
+ * Sets the local "top" and "bottom" variables
  */
 static void get_top_bottom()
 {
     ESP_LOGI(TAG, "getting top bottom");
+
+    // bottom
     uint8_t b0 = fram_read_byte(0);
     uint8_t b1 = fram_read_byte(1);
     uint8_t b2 = fram_read_byte(2);
     uint8_t b3 = fram_read_byte(3);
 
+    // top
     uint8_t b4 = fram_read_byte(4);
     uint8_t b5 = fram_read_byte(5);
     uint8_t b6 = fram_read_byte(6);
     uint8_t b7 = fram_read_byte(7);
-
-    // bottom = ((uint16_t)b0 << 8) | b1;
-    // top = ((uint16_t)b2 << 8) | b3;
 
     bottom = (uint32_t)b0 << 24;
     bottom |= b1 << 16;
@@ -511,19 +454,6 @@ static void get_top_bottom()
     top |= b7;
 
     // TODO: If top or bottom are either lower than lower limit or higher than higher limit (other checks as well like having 8 bytes in between bottom of bottom and top) -- then just set top = bottom = lower limit ?? make sure we dont wipe memory by mistake...
-
-    // Serial.println("getting bottom top");
-    // Serial.print("bottom: ");
-    // Serial.println(bottom);
-    // Serial.print("top: ");
-    // Serial.println(top);
-
-    // if (top == 0 && bottom == 0)
-    // {
-    //     ESP_LOGW(TAG, "first time initialising FRAM (top == 0 && bottom == 0), setting: top = bottom = limit_addr_bottom");
-    //     set_bottom(limit_addr_bottom);
-    //     set_top(limit_addr_bottom);
-    // }
 
     ESP_LOGI(TAG, "top: %d   bottom: %d", top, bottom);
 }
