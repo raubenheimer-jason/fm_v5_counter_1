@@ -1,1 +1,1 @@
-ssid_from_file
+VodafoneMobileWiFi-9ADC
