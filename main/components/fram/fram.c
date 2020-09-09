@@ -290,10 +290,10 @@ uint32_t get_stored_messages_count()
 void fram_reset()
 {
     ESP_LOGW(TAG, "resetting FRAM (setting: top = bottom = limit_addr_bottom = %d)", limit_addr_bottom);
-    // set_top(limit_addr_bottom);
-    // set_bottom(limit_addr_bottom);
-    set_top(100000);
-    set_bottom(100000);
+    set_top(limit_addr_bottom);
+    set_bottom(limit_addr_bottom);
+    // set_top(100000);
+    // set_bottom(100000);
 }
 
 /**

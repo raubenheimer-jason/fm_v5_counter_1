@@ -250,7 +250,8 @@ void app_main(void)
 
     // uint32_t max = 5;
     uint32_t start = 0;
-    uint32_t max = 15999;
+    // uint32_t max = 15999; // max number of messages
+    uint32_t max = 16000;
     // uint32_t max = 1500;
 
     for (uint32_t i = start; i < max; i++)
