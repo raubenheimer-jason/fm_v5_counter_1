@@ -1,0 +1,7 @@
+TIME
+
+RTC and NTP and system time working.
+
+Updated rtc set time and get time to incorporate the OSF in the status register
+
+RTC updated if necessary from the system time when the ntp updates the system time (happens in callback)
