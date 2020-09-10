@@ -29,17 +29,15 @@ static void IRAM_ATTR counter_isr(void *arg);
 static void gpio_interrupt_init(void);
 static void gpio_leds_init(void);
 
-uint32_t count = 0;
+static uint32_t count = 0;
 
 // Semaphore for count variable
-xSemaphoreHandle gatekeeper = 0;
-
-
+static xSemaphoreHandle count_gatekeeper = 0;
 
 void gpio_init(void)
 {
     // initialise semaphore
-    gatekeeper = xSemaphoreCreateMutex();
+    count_gatekeeper = xSemaphoreCreateMutex();
 
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
@@ -50,7 +48,7 @@ void gpio_init(void)
 
 static void IRAM_ATTR rtc_alarm_isr(void *arg)
 {
-    if (xSemaphoreTake(gatekeeper, 200))
+    if (xSemaphoreTake(count_gatekeeper, 200))
     {
         // store count value in local variable
         uint32_t local_count = count;
@@ -60,10 +58,13 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
         count = 0;
 
         // release count
-        xSemaphoreGive(gatekeeper);
+        xSemaphoreGive(count_gatekeeper);
 
-        rtc_alarm_flag = true; ///////////////////////////////////////////////////////////////////////// ADD SEMAPHORE AROUND THIS GUY ?????????????
-
+        if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100))
+        {
+            rtc_alarm_flag = true;
+            xSemaphoreGive(rtc_alarm_flag_gatekeeper);
+        }
         // send count and time data to Fram Task
 
         // get time from esp32
@@ -76,14 +77,20 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
         // send telemetry to fram_queue
         xQueueSendFromISR(fram_store_queue, &telemetry, NULL);
     }
+
+    // if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 0))
+    // {
+    //     rtc_alarm_flag = true;
+    //     xSemaphoreGive(rtc_alarm_flag_gatekeeper);
+    // }
 }
 
 static void IRAM_ATTR counter_isr(void *arg)
 {
-    if (xSemaphoreTake(gatekeeper, 200))
+    if (xSemaphoreTake(count_gatekeeper, 200))
     {
         count++;
-        xSemaphoreGive(gatekeeper); // release count
+        xSemaphoreGive(count_gatekeeper); // release count
     }
 }
 

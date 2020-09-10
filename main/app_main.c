@@ -48,6 +48,9 @@ static const char *TAG = "APP_MAIN";
 // // Semaphore for count variable
 // xSemaphoreHandle gatekeeper = 0;
 
+// Semaphore for rtc_alarm_flag variable
+xSemaphoreHandle rtc_alarm_flag_gatekeeper = 0;
+
 // static xQueueHandle fram_store_queue = NULL;
 xQueueHandle fram_store_queue = NULL;
 static xQueueHandle upload_queue = NULL;
@@ -69,11 +72,16 @@ void Fram_Task_Code(void *pvParameters)
 {
     for (;;)
     {
+
         if (rtc_alarm_flag == true)
         {
-            ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
-            rtc_alarm_flag = false;
-            rtc_clear_alarm();
+            if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100))
+            {
+                rtc_alarm_flag = false;
+                xSemaphoreGive(rtc_alarm_flag_gatekeeper);
+                ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
+                rtc_clear_alarm();
+            }
         }
 
         uint64_t telemetry_to_store = 0;
@@ -320,6 +328,9 @@ void app_main(void)
     fram_store_queue = xQueueCreate(10, sizeof(uint64_t));
     upload_queue = xQueueCreate(1, sizeof(uint64_t));
     ack_queue = xQueueCreate(1, sizeof(uint64_t));
+
+    // Semaphore for rtc_alarm_flag
+    rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();
 
     gpio_init();
 
