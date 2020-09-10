@@ -3,6 +3,7 @@ idf_component_register(
         "app_main.c" 
         "components/rtc/rtc.c"
         "components/fram/fram.c"
+        "components/ntp/ntp.c"
     INCLUDE_DIRS 
         "."
 )
