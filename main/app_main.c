@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "esp_system.h"
-#include "nvs_flash.h"
+// #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_netif.h"
 
@@ -327,14 +327,14 @@ void app_main(void)
     // rtc_config_alarm();
     // rtc_clear_alarm();
 
-    //Initialize NVS (for WiFi)
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+    // //Initialize NVS (for WiFi)
+    // esp_err_t ret = nvs_flash_init();
+    // if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    // {
+    //     ESP_ERROR_CHECK(nvs_flash_erase());
+    //     ret = nvs_flash_init();
+    // }
+    // ESP_ERROR_CHECK(ret);
 
     // WiFi
     wifi_init_sta();

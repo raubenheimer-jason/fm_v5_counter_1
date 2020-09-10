@@ -11,6 +11,8 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 
+#include "nvs_flash.h"
+
 // Prototypes
 void wifi_init_sta(void);
 
