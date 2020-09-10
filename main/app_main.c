@@ -64,6 +64,14 @@ static xQueueHandle ack_queue = NULL;
 
 bool rtc_alarm_flag = false;
 
+bool restart_required_flag = false;
+
+void set_restart_required_flag()
+{
+    restart_required_flag = true;
+    ESP_LOGW(TAG, "restart_required_flag set true");
+}
+
 // ================================================================================================= FRAM TASK
 
 void Fram_Task_Code(void *pvParameters)
@@ -155,13 +163,61 @@ void Upload_Task_Code(void *pvParameters)
 
     for (;;)
     {
-        gpio_set_level(WIFI_LED_PIN, 0);
-        gpio_set_level(MQTT_LED_PIN, 1);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        // wifi_ap_record_t ap_info;
+        // esp_err_t wifi_info_res = esp_wifi_sta_get_ap_info(&ap_info);
 
-        gpio_set_level(WIFI_LED_PIN, 1);
-        gpio_set_level(MQTT_LED_PIN, 0);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        esp_err_t wifi_info_res = ESP_ERR_WIFI_NOT_CONNECT;
+        do
+        {
+            wifi_ap_record_t ap_info;
+            wifi_info_res = esp_wifi_sta_get_ap_info(&ap_info);
+
+            if (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT)
+            {
+                // gpio_set_level(WIFI_LED_PIN, 1);
+                ESP_LOGE(TAG, "WiFi not connected (ESP_ERR_WIFI_NOT_CONNECT)");
+                vTaskDelay(5000 / portTICK_PERIOD_MS);
+            }
+        } while (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT);
+        // gpio_set_level(WIFI_LED_PIN, 0);
+
+        // if (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT)
+        // {
+        //     gpio_set_level(WIFI_LED_PIN, 1);
+        //     esp_err_t wifi_connect_res = esp_wifi_connect();
+
+        //     printf("wifi_connect_res: %d\n", wifi_connect_res);
+
+        //     // if (wifi_connect_res == ESP_ERR_WIFI_SSID)
+        //     // {
+        //     //     printf("error with the SSID (maybe we just cant find it?)\n");
+        //     //     // set_restart_required_flag();
+        //     // }
+        //     // else if (wifi_connect_res != ESP_OK)
+        //     // {
+        //     //     printf("wifi_connect_res: %d\n", wifi_connect_res);
+        //     // }
+        //     // else
+        //     // {
+        //     //     ESP_LOGI(TAG, "wifi connected??");
+        //     //     gpio_set_level(WIFI_LED_PIN, 0);
+        //     // }
+        // }
+        // else if (wifi_info_res == ESP_ERR_WIFI_CONN)
+        // {
+        //     set_restart_required_flag();
+        // }
+        // else
+        // {
+        //     ESP_LOGI(TAG, "wifi connected");
+        //     gpio_set_level(WIFI_LED_PIN, 0);
+        // }
+
+        // gpio_set_level(MQTT_LED_PIN, 1);
+        // vTaskDelay(500 / portTICK_PERIOD_MS);
+
+        // gpio_set_level(MQTT_LED_PIN, 0);
+        // vTaskDelay(500 / portTICK_PERIOD_MS);
 
         uint64_t telemetry_to_upload = 0;
 
@@ -356,17 +412,20 @@ static void gpio_leds_init(void)
 
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
+    printf("_________________________ EVENT HANDLER _________________________\n");
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
         esp_wifi_connect();
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
+        gpio_set_level(WIFI_LED_PIN, 1);
+
+        ESP_LOGI(TAG, "** retry to connect to the AP **");
         // if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY)
         // {
         esp_wifi_connect();
         // s_retry_num++;
-        ESP_LOGI(TAG, "retry to connect to the AP");
         // }
         // else
         // {
@@ -374,8 +433,15 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         // }
         // ESP_LOGI(TAG, "connect to the AP fail");
     }
+    // else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
+    // {
+    //     printf("----------------- event_id == WIFI_EVENT_STA_DISCONNECTED\n");
+    //     esp_wifi_connect();
+    // }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
+        gpio_set_level(WIFI_LED_PIN, 0);
+
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         // s_retry_num = 0;
@@ -400,6 +466,9 @@ void wifi_init_sta(void)
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
+
+    esp_event_handler_instance_t instance_sta_disconnect;
+
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
                                                         &event_handler,
@@ -410,6 +479,12 @@ void wifi_init_sta(void)
                                                         &event_handler,
                                                         NULL,
                                                         &instance_got_ip));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        WIFI_EVENT_STA_DISCONNECTED,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_sta_disconnect));
 
     // wifi_config_t wifi_config;
 
@@ -465,9 +540,12 @@ void wifi_init_sta(void)
     }
 
     /* The event will not be processed after unregister */
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
-    vEventGroupDelete(s_wifi_event_group);
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
+
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_sta_disconnect));
+
+    // vEventGroupDelete(s_wifi_event_group);
 }
 
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ WIFI
