@@ -2,6 +2,13 @@
 
 // const uint32_t jwt_exp = 3600;
 
+// char device_id[15];
+
+// char device_id[20];
+// esp_err_t res = get_device_id(device_id);
+
+char device_id[20];
+
 const char *private_key =
     "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:"
     "84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:"
@@ -21,6 +28,10 @@ static const char *TAG = "MQTT";
  */
 void mqtt_init(void)
 {
+    esp_err_t res = get_device_id(device_id);
+
+    printf("res: %d, dev id: %s\n", res, device_id);
+
     ESP_ERROR_CHECK(esp_netif_init());
 }
 
@@ -43,7 +54,9 @@ const char *mqtt_google_pem_start =
 esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 {
     // const char *sub_topic_command = "/devices/{device-id}/commands/#";
-    const char *sub_topic_config = "/devices/new-test-device/config";
+    char *sub_topic_config = "/devices/new-test-device/config";
+
+    printf("******************************************************** dev id: %s\n", device_id);
 
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
@@ -147,4 +160,24 @@ bool jwt_update_check(void)
     // }
 
     return false;
+}
+
+/**
+ * Generates the Device ID from the MAC address
+ */
+esp_err_t get_device_id(char device_id[])
+{
+    uint8_t raw_mac[6];
+
+    esp_err_t res = esp_efuse_mac_get_default(raw_mac);
+
+    if (res != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_efuse_mac_get_default failed\n");
+        return res;
+    }
+
+    sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]);
+
+    return ESP_OK;
 }

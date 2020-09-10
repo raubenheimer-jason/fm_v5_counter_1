@@ -43,6 +43,7 @@
 
 // const char *private_key asm("_binary_device_private_key_txt_start");
 
+char device_id[20];
 
 static const char *TAG = "APP_MAIN";
 
@@ -153,12 +154,16 @@ void Upload_Task_Code(void *pvParameters)
     time_t now;
     time(&now);
 
-    char *jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS 
+    char *jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
     // char *jwt = createJwt(CONFIG_DEVICE_PRIVATE_KEY, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
 
     printf("jwt: %s\n", jwt);
 
     // const char *jwt_const = (const char *)jwt;
+
+    printf("******************************************************** dev id in main ___: %s\n", device_id);
+
+    char client_id[200] = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device";
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = "mqtts://mqtt.2030.ltsapis.goog:8883",
@@ -166,7 +171,8 @@ void Upload_Task_Code(void *pvParameters)
         .port = 8883,
         .username = "unused",
         .password = jwt,
-        .client_id = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device",
+        // .client_id = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device",
+        .client_id = client_id,
         .cert_pem = (const char *)mqtt_google_pem_start,
         .lwt_qos = 1};
 
@@ -202,8 +208,8 @@ void Upload_Task_Code(void *pvParameters)
         {
             free(jwt); // USE REALLOC RATHER ????????????????????????????????????
             time(&now);
-            jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS 
-            // jwt = createJwt(CONFIG_DEVICE_PRIVATE_KEY, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS 
+            jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+            // jwt = createJwt(CONFIG_DEVICE_PRIVATE_KEY, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
             ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
             esp_err_t stop_ret = esp_mqtt_client_stop(client);
             if (stop_ret == ESP_OK)
@@ -248,7 +254,7 @@ void Upload_Task_Code(void *pvParameters)
 
                 // uint64_t i;
                 // printf("\t\tt.addr: %" PRIu64 "\n", t.addr);
-                ESP_LOGW(TAG, "telemetry_to_upload == previously_uploaded_telemetry (unix: %d, count: %d)", unix_time, count);
+                ESP_LOGI(TAG, "telemetry_to_upload == previously_uploaded_telemetry (unix: %d, count: %d)", unix_time, count);
                 if (xQueueSend(ack_queue, &telemetry_to_upload, 0))
                 {
                     ESP_LOGI(TAG, "ack sent to Fram_Task");
@@ -369,6 +375,15 @@ void app_main(void)
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
 
     esp_log_level_set("APP_MAIN", ESP_LOG_VERBOSE);
+
+    // esp_err_t res = get_device_id(device_id);
+
+    // printf("res: %d, dev id: %s\n", res, device_id);
+
+    // for (;;)
+    // {
+    //     vTaskDelay(100);
+    // }
 
     // FRAM
     fram_spi_init();
