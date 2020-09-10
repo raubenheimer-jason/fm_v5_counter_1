@@ -16,6 +16,6 @@
 #define ESP_INTR_FLAG_DEFAULT 0
 
 // Prototypes
-void gpio_init(void);
+void gpio_initial_setup(void);
 
 #endif // _GPIO_H_

@@ -13,7 +13,7 @@ static const char *TAG = "GPIO";
 // Semaphore for count variable
 static xSemaphoreHandle count_gatekeeper = 0;
 
-void gpio_init(void)
+void gpio_initial_setup(void)
 {
     // initialise semaphore
     count_gatekeeper = xSemaphoreCreateMutex();
@@ -23,6 +23,9 @@ void gpio_init(void)
 
     gpio_interrupt_init();
     gpio_leds_init();
+
+    gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
+    gpio_set_level(CONFIG_MQTT_LED_PIN, 0);
 
     ESP_LOGI(TAG, "GPIO init done");
 }

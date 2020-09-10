@@ -32,11 +32,17 @@
 // GPIO
 #include "components/gpio/gpio.h"
 
+// MQTT
+#include "components/mqtt/mqtt.h"
+
 // // For printing uint64_t
 // #define __STDC_FORMAT_MACROS
 // #include <inttypes.h>
 // uint64_t i;
 // printf("\t\tt.addr: %" PRIu64 "\n", t.addr);
+
+// const char *private_key asm("_binary_device_private_key_txt_start");
+
 
 static const char *TAG = "APP_MAIN";
 
@@ -140,6 +146,38 @@ void Fram_Task_Code(void *pvParameters)
 
 void Upload_Task_Code(void *pvParameters)
 {
+    // ============ MQTT ============
+
+    jwt_update_check();
+
+    time_t now;
+    time(&now);
+
+    char *jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS 
+    // char *jwt = createJwt(CONFIG_DEVICE_PRIVATE_KEY, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+
+    printf("jwt: %s\n", jwt);
+
+    // const char *jwt_const = (const char *)jwt;
+
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = "mqtts://mqtt.2030.ltsapis.goog:8883",
+        .host = "mqtt.2030.ltsapis.goog",
+        .port = 8883,
+        .username = "unused",
+        .password = jwt,
+        .client_id = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device",
+        .cert_pem = (const char *)mqtt_google_pem_start,
+        .lwt_qos = 1};
+
+    printf("pass: %s\n", mqtt_cfg.password);
+    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+    esp_mqtt_client_start(client);
+
+    // ============ MQTT ============
+
     bool need_to_upload_flag = false;
     uint64_t previously_uploaded_telemetry = 0;
 
@@ -157,6 +195,48 @@ void Upload_Task_Code(void *pvParameters)
                 vTaskDelay(5000 / portTICK_PERIOD_MS);
             }
         } while (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT);
+
+        // ============ MQTT ============
+
+        if (jwt_update_check())
+        {
+            free(jwt); // USE REALLOC RATHER ????????????????????????????????????
+            time(&now);
+            jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS 
+            // jwt = createJwt(CONFIG_DEVICE_PRIVATE_KEY, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS 
+            ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
+            esp_err_t stop_ret = esp_mqtt_client_stop(client);
+            if (stop_ret == ESP_OK)
+            {
+                ESP_LOGI(TAG, "mqtt stop successful");
+
+                mqtt_cfg.password = jwt;
+                esp_err_t ret = esp_mqtt_set_config(client, &mqtt_cfg);
+                if (ret == ESP_OK)
+                {
+                    ESP_LOGI(TAG, "JWT updated successfully, jwt: %s", jwt);
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "unable to update mqtt client with new JWT");
+                }
+
+                esp_err_t start_ret = esp_mqtt_client_start(client);
+                if (start_ret == ESP_OK)
+                {
+                    ESP_LOGI(TAG, "mqtt start successful");
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "mqtt start fail");
+                }
+            }
+            else
+            {
+                ESP_LOGE(TAG, "mqtt stop fail");
+            }
+        }
+        // ============ MQTT END ============
 
         uint64_t telemetry_to_upload = 0;
         if (need_to_upload_flag == false && xQueueReceive(upload_queue, &telemetry_to_upload, 0))
@@ -198,12 +278,20 @@ void Upload_Task_Code(void *pvParameters)
             printf("%s\n", telemetry_buf);
 
             vTaskDelay(5000 / portTICK_PERIOD_MS);
+            // ============ MQTT ============ START
+
+            int32_t upload_res = esp_mqtt_client_publish(client, "/devices/new-test-device/events", telemetry_buf, 0, 1, 0);
+
+            // ============ MQTT ============ END
 
             // Just for now before we implement MQTT
-            bool upload_res = true;
+            // bool upload_res = true;
 
-            if (upload_res == true)
+            // if (upload_res == true)
+            if (upload_res != -1)
             {
+
+                ESP_LOGI(TAG, "-->> PUBLISH SUCCESS!!!!");
 
                 previously_uploaded_telemetry = telemetry_to_upload;
                 need_to_upload_flag = false;
@@ -290,11 +378,19 @@ void app_main(void)
     upload_queue = xQueueCreate(1, sizeof(uint64_t));
     ack_queue = xQueueCreate(1, sizeof(uint64_t));
 
+    // ----------------------------------------------------     PUT THIS IN FOR THE QUEUES !!!!!!!!!!!!!!
+    // if (telemetry_queue == NULL)
+    // {
+    //     ESP_LOGE(TAG, "Error creating the queue, restarting in 10s");
+    //     vTaskDelay(10000 / portTICK_PERIOD_MS);
+    //     esp_restart();
+    // }
+
     // Semaphore for rtc_alarm_flag
     rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();
 
     // GPIO
-    gpio_init();
+    gpio_initial_setup();
 
     // Tasks
     start_fram_task();
@@ -308,4 +404,7 @@ void app_main(void)
 
     // NTP
     initialize_sntp();
+
+    // MQTT
+    mqtt_init(); // make sure NVS is initiated first (done in wifi)
 }
