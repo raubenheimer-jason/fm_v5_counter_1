@@ -10,5 +10,5 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(fm_v5_counter_1)
 
 target_add_binary_data(fm_v5_counter_1.elf "main/mqtt_eclipse_org.pem" TEXT)
-target_add_binary_data(fm_v5_counter_1.elf "main/wifi_password.txt" TEXT)
-target_add_binary_data(fm_v5_counter_1.elf "main/wifi_ssid.txt" TEXT)
+# target_add_binary_data(fm_v5_counter_1.elf "main/wifi_password.txt" TEXT)
+# target_add_binary_data(fm_v5_counter_1.elf "main/wifi_ssid.txt" TEXT)

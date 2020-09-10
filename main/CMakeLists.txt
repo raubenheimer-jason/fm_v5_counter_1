@@ -5,6 +5,7 @@ idf_component_register(
         "components/fram/fram.c"
         "components/ntp/ntp.c"
         "components/wifi/wifi.c"
+        "components/gpio/gpio.c"
     INCLUDE_DIRS 
         "."
 )

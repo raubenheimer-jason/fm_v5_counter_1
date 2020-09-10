@@ -18,8 +18,6 @@
 // #include "config.h"
 #include "main.h"
 
-#include "driver/gpio.h"
-
 #include "freertos/queue.h"
 
 #include "components/rtc/rtc.h"
@@ -33,6 +31,9 @@
 // NTP
 #include "components/ntp/ntp.h"
 
+// GPIO
+#include "components/gpio/gpio.h"
+
 // // For printing uint64_t
 // #define __STDC_FORMAT_MACROS
 // #include <inttypes.h>
@@ -44,21 +45,17 @@ static const char *TAG = "APP_MAIN";
 // extern const uint8_t wifi_ssid_from_file[32] asm("_binary_wifi_ssid_txt_start");
 // extern const uint8_t wifi_password_from_file[64] asm("_binary_wifi_password_txt_start");
 
-// Semaphore for count variable
-xSemaphoreHandle gatekeeper = 0;
+// // Semaphore for count variable
+// xSemaphoreHandle gatekeeper = 0;
 
-static xQueueHandle fram_store_queue = NULL;
+// static xQueueHandle fram_store_queue = NULL;
+xQueueHandle fram_store_queue = NULL;
 static xQueueHandle upload_queue = NULL;
 static xQueueHandle ack_queue = NULL;
 
 bool rtc_alarm_flag = false;
 
 bool restart_required_flag = false;
-
-// GPIO
-#define GPIO_OUTPUT_PIN_BITMASK ((1ULL << CONFIG_WIFI_LED_PIN) | (1ULL << CONFIG_MQTT_LED_PIN))
-#define GPIO_INPUT_PIN_BITMASK ((1ULL << CONFIG_COUNTER_PIN) | (1ULL << CONFIG_RTC_ALARM_PIN))
-#define ESP_INTR_FLAG_DEFAULT 0
 
 void set_restart_required_flag()
 {
@@ -276,86 +273,9 @@ static void start_fram_task()
     configASSERT(Fram_Task);
 }
 
-static void IRAM_ATTR rtc_alarm_isr(void *arg)
-{
-    if (xSemaphoreTake(gatekeeper, 200))
-    {
-        uint32_t local_count;
+// ============================================================================== GPIO
 
-        // store count value in local variable
-        local_count = count;
-
-        // clear count
-        count = 0;
-
-        // release count
-        xSemaphoreGive(gatekeeper);
-
-        rtc_alarm_flag = true;
-
-        // send count and time data to Fram Task
-
-        // get time from esp32
-        time_t unix_now;
-        time(&unix_now);
-
-        // store time and count in uint64_t
-        uint64_t telemetry = (uint64_t)unix_now << 32 | local_count;
-
-        // send telemetry to fram_queue
-        xQueueSendFromISR(fram_store_queue, &telemetry, NULL);
-    }
-}
-
-static void IRAM_ATTR counter_isr(void *arg)
-{
-    if (xSemaphoreTake(gatekeeper, 200))
-    {
-        count++;
-        xSemaphoreGive(gatekeeper); // release count
-    }
-}
-
-/**
- * Initialise the gpio interrupts
- * (RTC alarm & counter)
- */
-static void gpio_interrupt_init(void)
-{
-    gpio_config_t gpio_interrupt_pin_config = {
-        .pin_bit_mask = GPIO_INPUT_PIN_BITMASK,
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = 0,
-        .pull_down_en = 0,
-        .intr_type = GPIO_INTR_NEGEDGE,
-    };
-
-    gpio_config(&gpio_interrupt_pin_config);
-
-    // Change the interrupt type for the counter pin
-    gpio_set_intr_type(CONFIG_COUNTER_PIN, GPIO_INTR_POSEDGE);
-
-    // hook isr handlers for specific gpio pins
-    gpio_isr_handler_add(CONFIG_RTC_ALARM_PIN, rtc_alarm_isr, (void *)CONFIG_RTC_ALARM_PIN);
-    gpio_isr_handler_add(CONFIG_COUNTER_PIN, counter_isr, (void *)CONFIG_COUNTER_PIN);
-}
-
-/**
- * Initialise the LED gpios
- * (red and blue LED)
- */
-static void gpio_leds_init(void)
-{
-    gpio_config_t led_gpios_config = {
-        .pin_bit_mask = GPIO_OUTPUT_PIN_BITMASK,
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = 0,
-        .pull_down_en = 0,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-
-    gpio_config(&led_gpios_config);
-}
+// ============================================================================== GPIO
 
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ WIFI
 
@@ -393,19 +313,21 @@ void app_main(void)
 
     fram_spi_init();
 
-    // initialise semaphore
-    gatekeeper = xSemaphoreCreateMutex();
+    // // initialise semaphore
+    // gatekeeper = xSemaphoreCreateMutex();
 
     // create queues
     fram_store_queue = xQueueCreate(10, sizeof(uint64_t));
     upload_queue = xQueueCreate(1, sizeof(uint64_t));
     ack_queue = xQueueCreate(1, sizeof(uint64_t));
 
-    //install gpio isr service
-    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    gpio_init();
 
-    gpio_interrupt_init();
-    gpio_leds_init();
+    // //install gpio isr service
+    // gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+
+    // gpio_interrupt_init();
+    // gpio_leds_init();
 
     start_fram_task();
     start_upload_task();
