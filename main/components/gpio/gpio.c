@@ -1,28 +1,5 @@
 #include "gpio.h"
 
-// #include <stdint.h>
-// #include "driver/gpio.h"
-// #include "freertos/queue.h"
-// #include "esp_system.h"
-
-// test
-// #include <stdio.h>
-// #include <stdint.h>
-// #include <stddef.h>
-// #include <string.h>
-// #include "esp_system.h"
-// #include "nvs_flash.h"
-// #include "esp_event.h"
-// #include "esp_netif.h"
-
-// #include "esp_log.h"
-// #include "mqtt_client.h"
-// #include "esp_tls.h"
-// #include "esp_ota_ops.h"
-// test
-
-// #include "esp_event.h" // for xSemaphoreHandle
-
 // Static prototypes
 static void IRAM_ATTR rtc_alarm_isr(void *arg);
 static void IRAM_ATTR counter_isr(void *arg);
@@ -30,6 +7,8 @@ static void gpio_interrupt_init(void);
 static void gpio_leds_init(void);
 
 static uint32_t count = 0;
+
+static const char *TAG = "GPIO";
 
 // Semaphore for count variable
 static xSemaphoreHandle count_gatekeeper = 0;
@@ -44,6 +23,8 @@ void gpio_init(void)
 
     gpio_interrupt_init();
     gpio_leds_init();
+
+    ESP_LOGI(TAG, "GPIO init done");
 }
 
 static void IRAM_ATTR rtc_alarm_isr(void *arg)
@@ -52,7 +33,6 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
     {
         // store count value in local variable
         uint32_t local_count = count;
-        // local_count = count;
 
         // clear count
         count = 0;
@@ -77,12 +57,6 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
         // send telemetry to fram_queue
         xQueueSendFromISR(fram_store_queue, &telemetry, NULL);
     }
-
-    // if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 0))
-    // {
-    //     rtc_alarm_flag = true;
-    //     xSemaphoreGive(rtc_alarm_flag_gatekeeper);
-    // }
 }
 
 static void IRAM_ATTR counter_isr(void *arg)

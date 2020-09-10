@@ -22,7 +22,6 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        // gpio_set_level(WIFI_LED_PIN, 1);
         gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
 
         ESP_LOGI(TAG, "** retry to connect to the AP **");
@@ -31,7 +30,6 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        // gpio_set_level(WIFI_LED_PIN, 0);
         gpio_set_level(CONFIG_WIFI_LED_PIN, 0);
 
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;

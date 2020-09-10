@@ -8,7 +8,6 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-// #include "config.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 

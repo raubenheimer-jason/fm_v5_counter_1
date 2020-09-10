@@ -1,5 +1,4 @@
-/* FM_V5_counter_1
-*/
+// FM_V5_counter_1
 
 #include <stdio.h>
 #include <stdint.h>
@@ -15,15 +14,17 @@
 #include "esp_tls.h"
 #include "esp_ota_ops.h"
 
-// #include "config.h"
+#include <time.h>
+
 #include "main.h"
 
 #include "freertos/queue.h"
 
+// RTC
 #include "components/rtc/rtc.h"
-#include "components/fram/fram.h"
 
-#include <time.h>
+// FRAM
+#include "components/fram/fram.h"
 
 // wifi
 #include "components/wifi/wifi.h"
@@ -42,16 +43,9 @@
 
 static const char *TAG = "APP_MAIN";
 
-// extern const uint8_t wifi_ssid_from_file[32] asm("_binary_wifi_ssid_txt_start");
-// extern const uint8_t wifi_password_from_file[64] asm("_binary_wifi_password_txt_start");
-
-// // Semaphore for count variable
-// xSemaphoreHandle gatekeeper = 0;
-
 // Semaphore for rtc_alarm_flag variable
 xSemaphoreHandle rtc_alarm_flag_gatekeeper = 0;
 
-// static xQueueHandle fram_store_queue = NULL;
 xQueueHandle fram_store_queue = NULL;
 static xQueueHandle upload_queue = NULL;
 static xQueueHandle ack_queue = NULL;
@@ -89,9 +83,6 @@ void Fram_Task_Code(void *pvParameters)
         {
             ESP_LOGI(TAG, "received telemetry_to_store");
 
-            // uint32_t unix = telemetry_to_store >> 32;
-            // printf("unix: %d\n", unix);
-
             // Store telemetry in FRAM
             if (write_telemetry(telemetry_to_store) == false)
             {
@@ -106,12 +97,8 @@ void Fram_Task_Code(void *pvParameters)
         uint64_t telemetry_to_delete = 0;
         if (xQueueReceive(ack_queue, &telemetry_to_delete, 0))
         {
-            // if (telemetry_to_delete > last_known_unix)
             if (telemetry_to_delete > CONFIG_LAST_KNOWN_UNIX)
             {
-                // uint32_t unix = telemetry_to_delete >> 32;
-                // uint32_t count = (uint32_t)telemetry_to_delete;
-
                 // Store telemetry in FRAM
                 if (delete_last_read_telemetry(telemetry_to_delete) == true)
                 {
@@ -281,18 +268,6 @@ static void start_fram_task()
     configASSERT(Fram_Task);
 }
 
-// ============================================================================== GPIO
-
-// ============================================================================== GPIO
-
-// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ WIFI
-
-// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ WIFI
-
-// ================================================================================================= NTP
-
-// ================================================================================================= NTP
-
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -310,19 +285,7 @@ void app_main(void)
 
     esp_log_level_set("APP_MAIN", ESP_LOG_VERBOSE);
 
-    // printf("THIS IS A TEST: ");
-    // printf(CONFIG_BROKER_URI);
-    // printf("\n");
-
-    // for (;;)
-    // {
-    //     vTaskDelay(100);
-    // }
-
     fram_spi_init();
-
-    // // initialise semaphore
-    // gatekeeper = xSemaphoreCreateMutex();
 
     // create queues
     fram_store_queue = xQueueCreate(10, sizeof(uint64_t));
@@ -333,12 +296,6 @@ void app_main(void)
     rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();
 
     gpio_init();
-
-    // //install gpio isr service
-    // gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-
-    // gpio_interrupt_init();
-    // gpio_leds_init();
 
     start_fram_task();
     start_upload_task();
@@ -353,9 +310,6 @@ void app_main(void)
 
     uint32_t rtc_unix = rtc_get_unix();
 
-    // printf("unix from rtc: %d\n", rtc_unix);
-
-    // if (rtc_unix > last_known_unix) // OSF == 0 and time is probably valid
     if (rtc_unix > CONFIG_LAST_KNOWN_UNIX) // OSF == 0 and time is probably valid
     {
         // Set system time from rtc
@@ -363,15 +317,7 @@ void app_main(void)
         tv.tv_sec = rtc_unix;
         tv.tv_usec = 0;
         settimeofday(&tv, NULL);
-
-        // time_t unix_now;
-        // time(&unix_now);
-
-        // printf("system time: %d\n", (uint32_t)unix_now);
     }
-
-    // time_t unix_to_set = 1599553793;
-    // rtc_set_date_time(&unix_to_set);
 
     rtc_config_alarm();
     rtc_clear_alarm();
@@ -391,102 +337,3 @@ void app_main(void)
     // NTP
     initialize_sntp();
 }
-
-// FRAM ======================================================================================= FRAM
-/*
-// test();
-
-// fram_reset();
-
-// uint32_t max = 5;
-uint32_t start = 0;
-// uint32_t max = 15999; // max number of messages
-uint32_t max = 16000;
-// uint32_t max = 1500;
-
-for (uint32_t i = start; i < max; i++)
-{
-    uint32_t unix = i;
-    uint32_t count = i;
-
-    uint64_t write_tel = (uint64_t)unix << 32 | count;
-
-    // write_telemetry((uint64_t)0);
-    write_telemetry(write_tel);
-
-    // printf("delay (i = %d)  \ttel = %d  \t", i, (uint32_t)tel);
-    // display_top_bottom();
-
-    // if (i % 1000 == 0 && i > 0)
-    // {
-    //     vTaskDelay(10);
-    // }
-
-    if ((i % 1000 == 0 && i > 0) || i == (max - 1))
-    {
-        vTaskDelay(2);
-        printf("delay (i = %d)\tunix = %d  count = %d  \t", i, unix, count);
-        display_top_bottom();
-    }
-
-    uint64_t read_tel = read_telemetry();
-
-    // printf("delay (i = %d)  \ttel = %d\n", i, (uint32_t)tel);
-
-    delete_last_read_telemetry(read_tel);
-
-    // if (i % 1000 == 0 && i > 0)
-    // {
-    //     vTaskDelay(10);
-    // }
-
-    if ((i % 1000 == 0 && i > 0) || i == (max - 1))
-    {
-
-        uint32_t unix = read_tel >> 32;
-        uint32_t count = (uint32_t)read_tel;
-        vTaskDelay(2);
-        printf("\t\t\t\t\t\t\t\t\t\tread: \tunix = %d  count = %d  \t", unix, count);
-        display_top_bottom();
-    }
-}
-printf("\n");
-
-check_state();
-
-// printf("telemetry written\n\n");
-
-// for (uint32_t i = start; i < max; i++)
-// {
-//     uint64_t tel = read_telemetry();
-
-//     // printf("delay (i = %d)  \ttel = %d\n", i, (uint32_t)tel);
-
-//     delete_last_read_telemetry(tel);
-
-//     // if (i % 1000 == 0 && i > 0)
-//     // {
-//     //     vTaskDelay(10);
-//     // }
-
-//     if ((i % 1000 == 0 && i > 0) || i == (max - 1))
-//     {
-
-//         uint32_t unix = tel >> 32;
-//         uint32_t count = (uint32_t)tel;
-//         vTaskDelay(2);
-//         printf("delay (i = %d)\tunix = %d  count = %d  \t", i, unix, count);
-//         display_top_bottom();
-//     }
-// }
-// printf("\n");
-
-// check_state();
-// printf("telemetry read\n");
-
-for (;;)
-{
-    vTaskDelay(1);
-}
-*/
-// FRAM ======================================================================================= FRAM
