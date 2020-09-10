@@ -15,6 +15,8 @@
     "chrono": "c",
     "algorithm": "c",
     "*.inc": "c",
-    "wifi.h": "c"
+    "wifi.h": "c",
+    "time.h": "c",
+    "time_init.h": "c"
   }
 }

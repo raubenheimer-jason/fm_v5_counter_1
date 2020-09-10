@@ -14,14 +14,17 @@
 #include "esp_tls.h"
 #include "esp_ota_ops.h"
 
-#include <time.h>
+// #include <time.h>
 
 #include "main.h"
 
 #include "freertos/queue.h"
 
-// RTC
-#include "components/rtc/rtc.h"
+// // RTC
+// #include "components/rtc/rtc.h"
+
+// Time
+#include "components/time_init/time_init.h"
 
 // FRAM
 #include "components/fram/fram.h"
@@ -300,27 +303,29 @@ void app_main(void)
     start_fram_task();
     start_upload_task();
 
-    rtc_begin(CONFIG_I2C_SCL_PIN, CONFIG_I2C_SDA_PIN);
+    time_init();
 
-    /*
-        If RTC time is valid (OSF == 0), update system time from RTC
-            RTC time will be updated as soon as NTP callback is triggered (this is where the OSF is cleared in RTC)
-            If NTP callback isn't triggered often enough, RTC must update system time if system time is wrong
-    */
+    // rtc_begin(CONFIG_I2C_SCL_PIN, CONFIG_I2C_SDA_PIN);
 
-    uint32_t rtc_unix = rtc_get_unix();
+    // /*
+    //     If RTC time is valid (OSF == 0), update system time from RTC
+    //         RTC time will be updated as soon as NTP callback is triggered (this is where the OSF is cleared in RTC)
+    //         If NTP callback isn't triggered often enough, RTC must update system time if system time is wrong
+    // */
 
-    if (rtc_unix > CONFIG_LAST_KNOWN_UNIX) // OSF == 0 and time is probably valid
-    {
-        // Set system time from rtc
-        struct timeval tv;
-        tv.tv_sec = rtc_unix;
-        tv.tv_usec = 0;
-        settimeofday(&tv, NULL);
-    }
+    // uint32_t rtc_unix = rtc_get_unix();
 
-    rtc_config_alarm();
-    rtc_clear_alarm();
+    // if (rtc_unix > CONFIG_LAST_KNOWN_UNIX) // OSF == 0 and time is probably valid
+    // {
+    //     // Set system time from rtc
+    //     struct timeval tv;
+    //     tv.tv_sec = rtc_unix;
+    //     tv.tv_usec = 0;
+    //     settimeofday(&tv, NULL);
+    // }
+
+    // rtc_config_alarm();
+    // rtc_clear_alarm();
 
     //Initialize NVS (for WiFi)
     esp_err_t ret = nvs_flash_init();
