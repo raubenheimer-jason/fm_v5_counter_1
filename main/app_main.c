@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <string.h>
 #include "esp_system.h"
-// #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_netif.h"
 
@@ -14,14 +13,9 @@
 #include "esp_tls.h"
 #include "esp_ota_ops.h"
 
-// #include <time.h>
-
 #include "main.h"
 
 #include "freertos/queue.h"
-
-// // RTC
-// #include "components/rtc/rtc.h"
 
 // Time
 #include "components/time_init/time_init.h"
@@ -288,6 +282,7 @@ void app_main(void)
 
     esp_log_level_set("APP_MAIN", ESP_LOG_VERBOSE);
 
+    // FRAM
     fram_spi_init();
 
     // create queues
@@ -298,43 +293,15 @@ void app_main(void)
     // Semaphore for rtc_alarm_flag
     rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();
 
+    // GPIO
     gpio_init();
 
+    // Tasks
     start_fram_task();
     start_upload_task();
 
+    // Time
     time_init();
-
-    // rtc_begin(CONFIG_I2C_SCL_PIN, CONFIG_I2C_SDA_PIN);
-
-    // /*
-    //     If RTC time is valid (OSF == 0), update system time from RTC
-    //         RTC time will be updated as soon as NTP callback is triggered (this is where the OSF is cleared in RTC)
-    //         If NTP callback isn't triggered often enough, RTC must update system time if system time is wrong
-    // */
-
-    // uint32_t rtc_unix = rtc_get_unix();
-
-    // if (rtc_unix > CONFIG_LAST_KNOWN_UNIX) // OSF == 0 and time is probably valid
-    // {
-    //     // Set system time from rtc
-    //     struct timeval tv;
-    //     tv.tv_sec = rtc_unix;
-    //     tv.tv_usec = 0;
-    //     settimeofday(&tv, NULL);
-    // }
-
-    // rtc_config_alarm();
-    // rtc_clear_alarm();
-
-    // //Initialize NVS (for WiFi)
-    // esp_err_t ret = nvs_flash_init();
-    // if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    // {
-    //     ESP_ERROR_CHECK(nvs_flash_erase());
-    //     ret = nvs_flash_init();
-    // }
-    // ESP_ERROR_CHECK(ret);
 
     // WiFi
     wifi_init_sta();
