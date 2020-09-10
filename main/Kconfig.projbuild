@@ -1,5 +1,41 @@
 menu "Example Configuration"
 
+    config WIFI_SSID
+        string
+        default "VodafoneMobileWiFi-9ADC"
+    
+    config WIFI_PASSWORD
+        string
+        default "44SChscH"
+
+    config WIFI_LED_PIN
+        int 
+        default 1
+    
+    config MQTT_LED_PIN
+        int 
+        default 2
+
+    config COUNTER_PIN
+        int 
+        default 19
+    
+    config RTC_ALARM_PIN
+        int
+        default 20
+    
+    config I2C_SCL_PIN
+        int
+        default 40
+
+    config I2C_SDA_PIN
+        int
+        default 39
+
+    config LAST_KNOWN_UNIX
+        int
+        default 2
+
     config BROKER_URI
         string "Broker URL"
         default "mqtts://mqtt.eclipse.org:8883"
