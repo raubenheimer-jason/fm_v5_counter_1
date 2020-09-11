@@ -54,11 +54,7 @@ const char *mqtt_google_pem_start =
 esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 {
     // const char *sub_topic_command = "/devices/{device-id}/commands/#";
-    // char *sub_topic_config = "/devices/new-test-device/config";
-
-    char sub_topic_config[60] = "/devices/";
-    strcat(sub_topic_config, device_id);
-    strcat(sub_topic_config, "/config");
+    char *sub_topic_config = "/devices/new-test-device/config";
 
     printf("******************************************************** dev id: %s\n", device_id);
 
@@ -181,9 +177,7 @@ esp_err_t get_device_id(char device_id[])
         return res;
     }
 
-    // sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]);
-
-    sprintf(device_id, "new-test-device"); //new-test-device
+    sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]);
 
     return ESP_OK;
 }

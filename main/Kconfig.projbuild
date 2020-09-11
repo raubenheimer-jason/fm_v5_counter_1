@@ -1,5 +1,6 @@
 menu "Example Configuration"
 
+# WIFI ---------------------------------------------- WIFI
     config WIFI_SSID
         string
         default "VodafoneMobileWiFi-9ADC"
@@ -7,7 +8,9 @@ menu "Example Configuration"
     config WIFI_PASSWORD
         string
         default "44SChscH"
+# END WIFI ________________________ END WIFI
 
+# GPIO ---------------------------------------------- GPIO
     config WIFI_LED_PIN
         int 
         default 1
@@ -31,6 +34,8 @@ menu "Example Configuration"
     config I2C_SDA_PIN
         int
         default 39
+# END GPIO ________________________ END GPIO
+
 
     config LAST_KNOWN_UNIX
         int
@@ -40,25 +45,52 @@ menu "Example Configuration"
         int
         default 3600
 
+# GCP ---------------------------------------------- GCP
+    config GCP_PROJECT_ID
+        string
+        default "fm-development-1"
+    
+    config GCP_LOCATION
+        string
+        default "us-central1"
+
+    config GCP_REGISTRY
+        string
+        default "counter-1"
+
+    config GCP_URI
+        string
+        default "mqtts://mqtt.2030.ltsapis.goog:8883"
+
+    config GCP_HOST
+        string
+        default "mqtt.2030.ltsapis.goog"
+
+    config GCP_PORT
+        int
+        default  8883
+
+# END GCP ________________________ END GCP
+
     # config DEVICE_PRIVATE_KEY
     #     string "Device private key"
     #     default "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:5d:f6"
         
-    config BROKER_URI
-        string "Broker URL"
-        default "mqtts://mqtt.eclipse.org:8883"
-        help
-            URL of an mqtt broker which this example connects to.
+    # config BROKER_URI
+    #     string "Broker URL"
+    #     default "mqtts://mqtt.eclipse.org:8883"
+    #     help
+    #         URL of an mqtt broker which this example connects to.
 
-    config BROKER_CERTIFICATE_OVERRIDE
-        string "Broker certificate override"
-        default ""
-        help
-            Please leave empty if broker certificate included from a textfile; otherwise fill in a base64 part of PEM
-            format certificate
+    # config BROKER_CERTIFICATE_OVERRIDE
+    #     string "Broker certificate override"
+    #     default ""
+    #     help
+    #         Please leave empty if broker certificate included from a textfile; otherwise fill in a base64 part of PEM
+    #         format certificate
 
-    config BROKER_CERTIFICATE_OVERRIDDEN
-        bool
-        default y if BROKER_CERTIFICATE_OVERRIDE != ""
+    # config BROKER_CERTIFICATE_OVERRIDDEN
+    #     bool
+    #     default y if BROKER_CERTIFICATE_OVERRIDE != ""
 
 endmenu
