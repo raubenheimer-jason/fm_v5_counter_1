@@ -10,6 +10,14 @@ menu "Example Configuration"
         default "44SChscH"
 # END WIFI ________________________ END WIFI
 
+# KEYS ---------------------------------------------- KEYS
+
+    config DEVICE_PRIVATE_KEY
+        string
+        default "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:5d:f6"
+# END KEYS ________________________ END KEYS
+
+
 # GPIO ---------------------------------------------- GPIO
     config WIFI_LED_PIN
         int 
@@ -72,9 +80,7 @@ menu "Example Configuration"
 
 # END GCP ________________________ END GCP
 
-    # config DEVICE_PRIVATE_KEY
-    #     string "Device private key"
-    #     default "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:5d:f6"
+
         
     # config BROKER_URI
     #     string "Broker URL"

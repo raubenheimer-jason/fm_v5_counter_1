@@ -9,10 +9,12 @@
 
 char device_id[20];
 
-const char *private_key =
-    "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:"
-    "84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:"
-    "5d:f6";
+// const char *private_key =
+//     "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:"
+//     "84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:"
+//     "5d:f6";
+
+const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 
 // const char *private_key asm("_binary_device_private_key_txt_start");
 // extern const uint8_t wifi_ssid_from_file[] asm("_binary_device_private_key_start");
@@ -59,6 +61,17 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     // char sub_topic_config[60] = "/devices/";
     // strcat(sub_topic_config, device_id);
     // strcat(sub_topic_config, "/config");
+
+    static bool once = false;
+
+    if (once == false)
+    {
+        printf("private_key:\n");
+        printf("%s\n", private_key);
+        printf("mqtt_google_pem_start:\n");
+        printf("%s\n", mqtt_google_pem_start);
+        once = true;
+    }
 
     printf("******************************************************** dev id: %s\n", device_id);
 
