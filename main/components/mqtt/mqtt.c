@@ -1,32 +1,15 @@
 #include "mqtt.h"
 
-// const uint32_t jwt_exp = 3600;
-
-// char device_id[15];
-
-// char device_id[20];
-// esp_err_t res = get_device_id(device_id);
-
 char device_id[20];
 
-// const char *private_key =
-//     "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:"
-//     "84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:"
-//     "5d:f6";
-
-// const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
-
-// const char *private_key asm("_binary_device_private_key_txt_start");
-// extern const uint8_t wifi_ssid_from_file[] asm("_binary_device_private_key_start");
-
 static const char *TAG = "MQTT";
-
-// static uint32_t last_updated_jwt = 0;
 
 /**
  * Function to initialise MQTT
  * 
  * Make sure NVS is already initialised
+ * 
+ * Cert is the "minimal root CA" found: https://cloud.google.com/iot/docs/how-tos/mqtt-bridge
  */
 void mqtt_init(void)
 {
@@ -37,44 +20,8 @@ void mqtt_init(void)
     ESP_ERROR_CHECK(esp_netif_init());
 }
 
-// const uint8_t mqtt_google_pem_start[] =
-const char *mqtt_google_pem_start =
-    // this cert is the "minimal root CA" found: https://cloud.google.com/iot/docs/how-tos/mqtt-bridge
-    "-----BEGIN CERTIFICATE-----\n"
-    "MIIBxTCCAWugAwIBAgINAfD3nVndblD3QnNxUDAKBggqhkjOPQQDAjBEMQswCQYD\n"
-    "VQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzERMA8G\n"
-    "A1UEAxMIR1RTIExUU1IwHhcNMTgxMTAxMDAwMDQyWhcNNDIxMTAxMDAwMDQyWjBE\n"
-    "MQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExM\n"
-    "QzERMA8GA1UEAxMIR1RTIExUU1IwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATN\n"
-    "8YyO2u+yCQoZdwAkUNv5c3dokfULfrA6QJgFV2XMuENtQZIG5HUOS6jFn8f0ySlV\n"
-    "eORCxqFyjDJyRn86d+Iko0IwQDAOBgNVHQ8BAf8EBAMCAYYwDwYDVR0TAQH/BAUw\n"
-    "AwEB/zAdBgNVHQ4EFgQUPv7/zFLrvzQ+PfNA0OQlsV+4u1IwCgYIKoZIzj0EAwID\n"
-    "SAAwRQIhAPKuf/VtBHqGw3TUwUIq7TfaExp3bH7bjCBmVXJupT9FAiBr0SmCtsuk\n"
-    "miGgpajjf/gFigGM34F9021bCWs1MbL0SA==\n"
-    "-----END CERTIFICATE-----\n";
-
 esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 {
-    // const char *sub_topic_command = "/devices/{device-id}/commands/#";
-    // char *sub_topic_config = "/devices/new-test-device/config";
-
-    // char sub_topic_config[60] = "/devices/";
-    // strcat(sub_topic_config, device_id);
-    // strcat(sub_topic_config, "/config");
-
-    // static bool once = false;
-
-    // if (once == false)
-    // {
-    //     printf("private_key:\n");
-    //     printf("%s\n", private_key);
-    //     printf("mqtt_google_pem_start:\n");
-    //     printf("%s\n", mqtt_google_pem_start);
-    //     once = true;
-    // }
-
-    printf("******************************************************** dev id: %s\n", device_id);
-
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
     switch (event->event_id)
@@ -88,13 +35,11 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         strcat(sub_topic_config, "/devices/");
         strcat(sub_topic_config, device_id);
         strcat(sub_topic_config, "/config");
-        printf("len = %d, sub_topic_config: %s\n", strlen(sub_topic_config), sub_topic_config);
 
         msg_id = esp_mqtt_client_subscribe(client, sub_topic_config, 1);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        printf("free sub_topic_config pointer\n");
-        free(sub_topic_config); // do I need to free this??
+        free(sub_topic_config);
 
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -156,13 +101,9 @@ bool jwt_update_check(void)
 {
     static uint32_t last_updated = 0;
 
-    // const uint32_t update_interval = 3500; // seconds
-    // const uint32_t last_known_unix = 1597852811;
-
     time_t now;
     time(&now);
 
-    // while (now < last_known_unix)
     while (now < CONFIG_LAST_KNOWN_UNIX)
     {
         ESP_LOGW(TAG, "waiting for time to be updated before updating JWT");
@@ -178,14 +119,6 @@ bool jwt_update_check(void)
         last_updated = now;
         return true;
     }
-
-    // if ((last_updated + ((float)jwt_exp - (0.1 * jwt_exp))) < now)
-    // {
-    //     printf("the value: %f   now:%d\n", (last_updated + ((float)jwt_exp - (0.1 * jwt_exp))), (uint32_t)now);
-    //     ESP_LOGI(TAG, "need to update JWT");
-    //     last_updated = now;
-    //     return true;
-    // }
 
     return false;
 }
@@ -205,7 +138,7 @@ esp_err_t get_device_id(char device_id[])
         return res;
     }
 
-    // sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]);
+    // sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]); // KEEP THIS !!!!!!!!!!!!!
 
     sprintf(device_id, "new-test-device"); //new-test-device
 

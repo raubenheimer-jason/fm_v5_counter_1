@@ -41,10 +41,6 @@
 // uint64_t i;
 // printf("\t\tt.addr: %" PRIu64 "\n", t.addr);
 
-// const char *private_key asm("_binary_device_private_key_txt_start");
-
-char device_id[20];
-
 static const char *TAG = "APP_MAIN";
 
 // Semaphore for rtc_alarm_flag variable
@@ -59,6 +55,8 @@ bool rtc_alarm_flag = false;
 bool restart_required_flag = false;
 
 // ====================================================== MQTT
+
+char device_id[20];
 
 const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 
@@ -163,34 +161,16 @@ void Upload_Task_Code(void *pvParameters)
     time_t now;
     time(&now);
 
-    // char *jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
     char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
-    // char *jwt = createJwt(CONFIG_DEVICE_PRIVATE_KEY, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
 
     printf("jwt: %s\n", jwt);
-
-    // const char *jwt_const = (const char *)jwt;
-
-    printf("******************************************************** dev id in main ___: %s\n", device_id);
-
-    // char client_id[200] = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device";
-    // char client_id[200] = "projects/" CONFIG_GCP_PROJECT_ID "/locations/" CONFIG_GCP_LOCATION "/registries/" CONFIG_GCP_REGISTRY "/devices/";
-
-    // char client_id[200] = "projects/";        // fm-development-1/locations/us-central1/registries/counter-1/devices/"; // This works
-    // strcat(client_id, CONFIG_GCP_PROJECT_ID); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
-    // strcat(client_id, "/locations/");
-    // strcat(client_id, CONFIG_GCP_LOCATION);
-    // strcat(client_id, "/registries/");
-    // strcat(client_id, CONFIG_GCP_REGISTRY);
-    // strcat(client_id, "/devices/");
-    // strcat(client_id, device_id);
 
     // Check for error allocating memory
     // Won't need to free this as it's used throughout the life of the program
     char *client_id = (char *)malloc(strlen("projects/") + strlen(CONFIG_GCP_PROJECT_ID) + strlen("/locations/") + strlen(CONFIG_GCP_LOCATION) + strlen("/registries/") + strlen(CONFIG_GCP_REGISTRY) + strlen("/devices/") + strlen(device_id) + 1);
     client_id[0] = '\0';
-    strcat(client_id, "projects/");           // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
-    strcat(client_id, CONFIG_GCP_PROJECT_ID); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
+    strcat(client_id, "projects/"); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
+    strcat(client_id, CONFIG_GCP_PROJECT_ID);
     strcat(client_id, "/locations/");
     strcat(client_id, CONFIG_GCP_LOCATION);
     strcat(client_id, "/registries/");
@@ -200,21 +180,15 @@ void Upload_Task_Code(void *pvParameters)
     printf("len = %d, client_id: %s\n", strlen(client_id), client_id);
 
     esp_mqtt_client_config_t mqtt_cfg = {
-        // .uri = "mqtts://mqtt.2030.ltsapis.goog:8883",
-        .uri = CONFIG_GCP_URI,
-        // .host = "mqtt.2030.ltsapis.goog",
-        .host = CONFIG_GCP_HOST,
-        // .port = 8883,
-        .port = CONFIG_GCP_PORT,
+        .uri = CONFIG_GCP_URI,   // "mqtts://mqtt.2030.ltsapis.goog:8883"
+        .host = CONFIG_GCP_HOST, // "mqtt.2030.ltsapis.goog"
+        .port = CONFIG_GCP_PORT, // 8883
         .username = "unused",
         .password = jwt,
-        // .client_id = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device",
-        .client_id = client_id,
-        // .cert_pem = (const char *)mqtt_google_pem_start,
+        .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
         .cert_pem = (const char *)mqtt_google_primary_pem,
         .lwt_qos = 1};
 
-    printf("pass: %s\n", mqtt_cfg.password);
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
@@ -223,19 +197,16 @@ void Upload_Task_Code(void *pvParameters)
     // Won't need to free this as it's used throughout the life of the program
     char *telemetry_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
     telemetry_topic[0] = '\0';
-    strcat(telemetry_topic, "/devices/");
+    strcat(telemetry_topic, "/devices/"); // "/devices/new-test-device/events"
     strcat(telemetry_topic, device_id);
     strcat(telemetry_topic, "/events");
     printf("len = %d, telemetry_topic: %s\n", strlen(telemetry_topic), telemetry_topic);
-
-    // char telemetry_topic[60] = "/devices/"; // "/devices/new-test-device/events"
-    // strcat(telemetry_topic, device_id);
-    // strcat(telemetry_topic, "/events");
 
     // ============ MQTT ============
 
     bool need_to_upload_flag = false;
     uint64_t previously_uploaded_telemetry = 0;
+    uint64_t telemetry_to_upload = 0;
 
     uint32_t success_count = 0;
     uint32_t error_count = 0;
@@ -261,9 +232,7 @@ void Upload_Task_Code(void *pvParameters)
         {
             free(jwt); // USE REALLOC RATHER ????????????????????????????????????
             time(&now);
-            // jwt = createJwt(private_key, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
             jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
-            // jwt = createJwt(CONFIG_DEVICE_PRIVATE_KEY, "fm-development-1", CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
             ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
             esp_err_t stop_ret = esp_mqtt_client_stop(client);
             if (stop_ret == ESP_OK)
@@ -298,7 +267,6 @@ void Upload_Task_Code(void *pvParameters)
         }
         // ============ MQTT END ============
 
-        uint64_t telemetry_to_upload = 0;
         if (need_to_upload_flag == false && xQueueReceive(upload_queue, &telemetry_to_upload, 0))
         {
             if (telemetry_to_upload == previously_uploaded_telemetry)
@@ -340,13 +308,9 @@ void Upload_Task_Code(void *pvParameters)
             vTaskDelay(5000 / portTICK_PERIOD_MS);
             // ============ MQTT ============ START
 
-            // int32_t upload_res = esp_mqtt_client_publish(client, "/devices/new-test-device/events", telemetry_buf, 0, 1, 0);
             int32_t upload_res = esp_mqtt_client_publish(client, telemetry_topic, telemetry_buf, 0, 1, 0);
 
             // ============ MQTT ============ END
-
-            // Just for now before we implement MQTT
-            // bool upload_res = true;
 
             printf("upload_res: %d\n", upload_res);
 
@@ -355,8 +319,6 @@ void Upload_Task_Code(void *pvParameters)
                 printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! UPLOAD_RES == 0\n");
             }
 
-            // if (upload_res == true)
-            // if (upload_res != -1)
             if (upload_res > 0) // surely message ID won't be 0 ??
             {
                 success_count++;
@@ -444,15 +406,6 @@ void app_main(void)
 
     esp_log_level_set("APP_MAIN", ESP_LOG_VERBOSE);
 
-    // esp_err_t res = get_device_id(device_id);
-
-    // printf("res: %d, dev id: %s\n", res, device_id);
-
-    // for (;;)
-    // {
-    //     vTaskDelay(100);
-    // }
-
     // FRAM
     fram_spi_init();
 
@@ -461,13 +414,26 @@ void app_main(void)
     upload_queue = xQueueCreate(1, sizeof(uint64_t));
     ack_queue = xQueueCreate(1, sizeof(uint64_t));
 
-    // ----------------------------------------------------     PUT THIS IN FOR THE QUEUES !!!!!!!!!!!!!!
-    // if (telemetry_queue == NULL)
-    // {
-    //     ESP_LOGE(TAG, "Error creating the queue, restarting in 10s");
-    //     vTaskDelay(10000 / portTICK_PERIOD_MS);
-    //     esp_restart();
-    // }
+    // Check queues
+    bool queue_create_failed = false;
+    if (fram_store_queue == NULL)
+    {
+        ESP_LOGE(TAG, "fram_store_queue == NULL");
+    }
+    if (upload_queue == NULL)
+    {
+        ESP_LOGE(TAG, "upload_queue == NULL");
+    }
+    if (ack_queue == NULL)
+    {
+        ESP_LOGE(TAG, "ack_queue == NULL");
+    }
+    if (queue_create_failed == true)
+    {
+        ESP_LOGE(TAG, "restarting in 10s");
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+        esp_restart();
+    }
 
     // Semaphore for rtc_alarm_flag
     rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();

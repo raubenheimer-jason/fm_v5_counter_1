@@ -19,6 +19,8 @@ menu "Example Configuration"
 
 
 # GPIO ---------------------------------------------- GPIO
+    
+    # LEDs
     config WIFI_LED_PIN
         int 
         default 1
@@ -26,7 +28,8 @@ menu "Example Configuration"
     config MQTT_LED_PIN
         int 
         default 2
-
+    
+    # Interrupts
     config COUNTER_PIN
         int 
         default 19
@@ -35,6 +38,24 @@ menu "Example Configuration"
         int
         default 20
     
+    # Status
+    config MAINS_SENSE_PIN
+        int
+        default 3
+
+    config BAT_STATUS_PIN
+        int
+        default 9
+    
+    config BAT_SENSE_PIN
+        int
+        default 10
+
+    config SENSOR_TYPE_PIN
+        int
+        default 21
+
+    # I2c
     config I2C_SCL_PIN
         int
         default 40
@@ -42,6 +63,24 @@ menu "Example Configuration"
     config I2C_SDA_PIN
         int
         default 39
+
+    # SPI
+    config SPI_MOSI_PIN
+        int
+        default 36
+
+    config SPI_CLK_PIN
+        int
+        default 35
+
+    config SPI_MISO_PIN
+        int
+        default 34
+
+    config SPI_CS_FRAM_PIN
+        int
+        default 33
+
 # END GPIO ________________________ END GPIO
 
 
