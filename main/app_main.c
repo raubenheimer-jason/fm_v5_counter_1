@@ -58,6 +58,15 @@ bool rtc_alarm_flag = false;
 
 bool restart_required_flag = false;
 
+// ====================================================== MQTT
+
+const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
+
+extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
+extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
+
+// ====================================================== END MQTT
+
 void set_restart_required_flag()
 {
     restart_required_flag = true;
@@ -201,7 +210,8 @@ void Upload_Task_Code(void *pvParameters)
         .password = jwt,
         // .client_id = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device",
         .client_id = client_id,
-        .cert_pem = (const char *)mqtt_google_pem_start,
+        // .cert_pem = (const char *)mqtt_google_pem_start,
+        .cert_pem = (const char *)mqtt_google_primary_pem,
         .lwt_qos = 1};
 
     printf("pass: %s\n", mqtt_cfg.password);
@@ -226,6 +236,9 @@ void Upload_Task_Code(void *pvParameters)
 
     bool need_to_upload_flag = false;
     uint64_t previously_uploaded_telemetry = 0;
+
+    uint32_t success_count = 0;
+    uint32_t error_count = 0;
 
     for (;;)
     {
@@ -346,7 +359,7 @@ void Upload_Task_Code(void *pvParameters)
             // if (upload_res != -1)
             if (upload_res > 0) // surely message ID won't be 0 ??
             {
-
+                success_count++;
                 ESP_LOGI(TAG, "-->> PUBLISH SUCCESS!!!!");
 
                 previously_uploaded_telemetry = telemetry_to_upload;
@@ -365,9 +378,14 @@ void Upload_Task_Code(void *pvParameters)
             }
             else
             {
+                error_count++;
                 ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!!");
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
+
+            uint32_t total = success_count + error_count;
+            float success = ((float)success_count / total) * 100;
+            printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
         }
         else
         {

@@ -35,7 +35,7 @@ extern char device_id[20];
 
 // Variable declerations
 // const uint8_t mqtt_google_pem_start[];
-const char *mqtt_google_pem_start;
-const char *private_key;
+// const char *mqtt_google_pem_start;
+// const char *private_key;
 
 #endif // _MQTT_H_
