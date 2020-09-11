@@ -56,9 +56,9 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     // const char *sub_topic_command = "/devices/{device-id}/commands/#";
     // char *sub_topic_config = "/devices/new-test-device/config";
 
-    char sub_topic_config[60] = "/devices/";
-    strcat(sub_topic_config, device_id);
-    strcat(sub_topic_config, "/config");
+    // char sub_topic_config[60] = "/devices/";
+    // strcat(sub_topic_config, device_id);
+    // strcat(sub_topic_config, "/config");
 
     printf("******************************************************** dev id: %s\n", device_id);
 
@@ -70,8 +70,18 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
 
+        char *sub_topic_config = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/config") + 1); // Check for error allocating memory
+        sub_topic_config[0] = '\0';
+        strcat(sub_topic_config, "/devices/");
+        strcat(sub_topic_config, device_id);
+        strcat(sub_topic_config, "/config");
+        printf("len = %d, sub_topic_config: %s\n", strlen(sub_topic_config), sub_topic_config);
+
         msg_id = esp_mqtt_client_subscribe(client, sub_topic_config, 1);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+        printf("free sub_topic_config pointer\n");
+        free(sub_topic_config); // do I need to free this??
 
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -114,6 +124,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "Other event id:%d", event->event_id);
         break;
     }
+
     return ESP_OK;
 }
 

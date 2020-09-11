@@ -165,10 +165,30 @@ void Upload_Task_Code(void *pvParameters)
     printf("******************************************************** dev id in main ___: %s\n", device_id);
 
     // char client_id[200] = "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device";
+    // char client_id[200] = "projects/" CONFIG_GCP_PROJECT_ID "/locations/" CONFIG_GCP_LOCATION "/registries/" CONFIG_GCP_REGISTRY "/devices/";
 
-    char client_id[200] = "projects/" CONFIG_GCP_PROJECT_ID "/locations/" CONFIG_GCP_LOCATION "/registries/" CONFIG_GCP_REGISTRY "/devices/";
+    // char client_id[200] = "projects/";        // fm-development-1/locations/us-central1/registries/counter-1/devices/"; // This works
+    // strcat(client_id, CONFIG_GCP_PROJECT_ID); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
+    // strcat(client_id, "/locations/");
+    // strcat(client_id, CONFIG_GCP_LOCATION);
+    // strcat(client_id, "/registries/");
+    // strcat(client_id, CONFIG_GCP_REGISTRY);
+    // strcat(client_id, "/devices/");
+    // strcat(client_id, device_id);
 
+    // Check for error allocating memory
+    // Won't need to free this as it's used throughout the life of the program
+    char *client_id = (char *)malloc(strlen("projects/") + strlen(CONFIG_GCP_PROJECT_ID) + strlen("/locations/") + strlen(CONFIG_GCP_LOCATION) + strlen("/registries/") + strlen(CONFIG_GCP_REGISTRY) + strlen("/devices/") + strlen(device_id) + 1);
+    client_id[0] = '\0';
+    strcat(client_id, "projects/");           // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
+    strcat(client_id, CONFIG_GCP_PROJECT_ID); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
+    strcat(client_id, "/locations/");
+    strcat(client_id, CONFIG_GCP_LOCATION);
+    strcat(client_id, "/registries/");
+    strcat(client_id, CONFIG_GCP_REGISTRY);
+    strcat(client_id, "/devices/");
     strcat(client_id, device_id);
+    printf("len = %d, client_id: %s\n", strlen(client_id), client_id);
 
     esp_mqtt_client_config_t mqtt_cfg = {
         // .uri = "mqtts://mqtt.2030.ltsapis.goog:8883",
@@ -190,9 +210,17 @@ void Upload_Task_Code(void *pvParameters)
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
     esp_mqtt_client_start(client);
 
-    char telemetry_topic[60] = "/devices/"; // "/devices/new-test-device/events"
+    // Won't need to free this as it's used throughout the life of the program
+    char *telemetry_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
+    telemetry_topic[0] = '\0';
+    strcat(telemetry_topic, "/devices/");
     strcat(telemetry_topic, device_id);
     strcat(telemetry_topic, "/events");
+    printf("len = %d, telemetry_topic: %s\n", strlen(telemetry_topic), telemetry_topic);
+
+    // char telemetry_topic[60] = "/devices/"; // "/devices/new-test-device/events"
+    // strcat(telemetry_topic, device_id);
+    // strcat(telemetry_topic, "/events");
 
     // ============ MQTT ============
 
@@ -307,8 +335,16 @@ void Upload_Task_Code(void *pvParameters)
             // Just for now before we implement MQTT
             // bool upload_res = true;
 
+            printf("upload_res: %d\n", upload_res);
+
+            if (upload_res == 0)
+            {
+                printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! UPLOAD_RES == 0\n");
+            }
+
             // if (upload_res == true)
-            if (upload_res != -1)
+            // if (upload_res != -1)
+            if (upload_res > 0) // surely message ID won't be 0 ??
             {
 
                 ESP_LOGI(TAG, "-->> PUBLISH SUCCESS!!!!");
