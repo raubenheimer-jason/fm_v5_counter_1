@@ -15,7 +15,7 @@ typedef struct power_status
 typedef struct wifi_status
 {
     uint32_t disconnections;
-    int8_t rssi;
+    int8_t rssi_low_mark;
 } wifi_status;
 
 typedef struct mqtt_status
@@ -62,7 +62,7 @@ static device_status dev_status = {
     },
     .wifi = {
         .disconnections = 0,
-        .rssi = 0,
+        .rssi_low_mark = 0,
     },
     .mqtt = {
         .upload_errors = 0,
@@ -179,11 +179,15 @@ void status_evaluatePower(void)
 // =========================================================== WIFI
 
 /**
- * Set the RSSI in the status struct
+ * Set the RSSI low water mark in the status struct
+ * 
  */
-void status_setRssi(int8_t rssi)
+void status_setRssiLowWaterMark(int8_t rssi)
 {
-    dev_status.wifi.rssi = rssi;
+    if (dev_status.wifi.rssi_low_mark > rssi)
+    {
+        dev_status.wifi.rssi_low_mark = rssi;
+    }
 }
 
 /**
@@ -194,13 +198,13 @@ void status_incrementWifiDisconnections(void)
     dev_status.wifi.disconnections++;
 }
 
-/**
- * Clear the wifi disconnections count
- */
-void status_clearWifiDisconnections(void)
-{
-    dev_status.wifi.disconnections = 0;
-}
+// /**
+//  * Clear the wifi disconnections count
+//  */
+// void status_clearWifiDisconnections(void)
+// {
+//     dev_status.wifi.disconnections = 0;
+// }
 
 // --------------------------------- END WIFI
 
@@ -214,13 +218,13 @@ void status_incrementMqttUploadErrors(void)
     dev_status.mqtt.upload_errors++;
 }
 
-/**
- * Clear the MQTT upload errors count
- */
-void status_clearMqttUploadErrors(void)
-{
-    dev_status.mqtt.upload_errors = 0;
-}
+// /**
+//  * Clear the MQTT upload errors count
+//  */
+// void status_clearMqttUploadErrors(void)
+// {
+//     dev_status.mqtt.upload_errors = 0;
+// }
 
 /**
  * Increment the MQTT config_read_errors count
@@ -232,13 +236,13 @@ void status_incrementMqttConfigReadErrors(void)
     dev_status.mqtt.config_read_errors++;
 }
 
-/**
- * Clear the MQTT config_read_errors count
- */
-void status_clearMqttConfigReadErrors(void)
-{
-    dev_status.mqtt.config_read_errors = 0;
-}
+// /**
+//  * Clear the MQTT config_read_errors count
+//  */
+// void status_clearMqttConfigReadErrors(void)
+// {
+//     dev_status.mqtt.config_read_errors = 0;
+// }
 
 // --------------------------------- END MQTT
 
@@ -252,13 +256,13 @@ void status_incrementNtpErrors(void)
     dev_status.system.time.ntp_errors++;
 }
 
-/**
- * Clear the NTP errors count
- */
-void status_clearNtpErrors(void)
-{
-    dev_status.system.time.ntp_errors = 0;
-}
+// /**
+//  * Clear the NTP errors count
+//  */
+// void status_clearNtpErrors(void)
+// {
+//     dev_status.system.time.ntp_errors = 0;
+// }
 
 /**
  * Increment the system_time_update_errors count
@@ -268,13 +272,13 @@ void status_incrementSysTimeUpdateErrors(void)
     dev_status.system.time.system_time_update_errors++;
 }
 
-/**
- * Clear the system_time_update_errors count
- */
-void status_clearSysTimeUpdateErrors(void)
-{
-    dev_status.system.time.system_time_update_errors = 0;
-}
+// /**
+//  * Clear the system_time_update_errors count
+//  */
+// void status_clearSysTimeUpdateErrors(void)
+// {
+//     dev_status.system.time.system_time_update_errors = 0;
+// }
 
 /**
  * Increment the rtc_set_time_errors count
@@ -284,13 +288,13 @@ void status_incrementRtcSetErrors(void)
     dev_status.system.time.rtc_set_time_errors++;
 }
 
-/**
- * Clear the rtc_set_time_errors count
- */
-void status_clearRtcSetErrors(void)
-{
-    dev_status.system.time.rtc_set_time_errors = 0;
-}
+// /**
+//  * Clear the rtc_set_time_errors count
+//  */
+// void status_clearRtcSetErrors(void)
+// {
+//     dev_status.system.time.rtc_set_time_errors = 0;
+// }
 
 /**
  * Increment the rtc_read_errors count
@@ -300,13 +304,13 @@ void status_incrementRtcReadErrors(void)
     dev_status.system.time.rtc_read_errors++;
 }
 
-/**
- * Clear the rtc_read_errors count
- */
-void status_clearRtcReadErrors(void)
-{
-    dev_status.system.time.rtc_read_errors = 0;
-}
+// /**
+//  * Clear the rtc_read_errors count
+//  */
+// void status_clearRtcReadErrors(void)
+// {
+//     dev_status.system.time.rtc_read_errors = 0;
+// }
 
 // --------------------------------- END TIME
 
@@ -320,13 +324,13 @@ void status_incrementFramReadErrors(void)
     dev_status.system.fram.read_errors++;
 }
 
-/**
- * Clear the FRAM read_errors count
- */
-void status_clearFramReadErrors(void)
-{
-    dev_status.system.fram.read_errors = 0;
-}
+// /**
+//  * Clear the FRAM read_errors count
+//  */
+// void status_clearFramReadErrors(void)
+// {
+//     dev_status.system.fram.read_errors = 0;
+// }
 
 /**
  * Increment the FRAM write_errors count
@@ -336,13 +340,13 @@ void status_incrementFramWriteErrors(void)
     dev_status.system.fram.write_errors++;
 }
 
-/**
- * Clear the FRAM write_errors count
- */
-void status_clearFramWriteErrors(void)
-{
-    dev_status.system.fram.write_errors = 0;
-}
+// /**
+//  * Clear the FRAM write_errors count
+//  */
+// void status_clearFramWriteErrors(void)
+// {
+//     dev_status.system.fram.write_errors = 0;
+// }
 
 /**
  * Increment the FRAM alignment_errors count
@@ -354,13 +358,13 @@ void status_incrementFramAlignmentErrors(void)
     dev_status.system.fram.alignment_errors++;
 }
 
-/**
- * Clear the FRAM alignment_errors count
- */
-void status_clearFramAlignmentErrors(void)
-{
-    dev_status.system.fram.alignment_errors = 0;
-}
+// /**
+//  * Clear the FRAM alignment_errors count
+//  */
+// void status_clearFramAlignmentErrors(void)
+// {
+//     dev_status.system.fram.alignment_errors = 0;
+// }
 
 /**
  * Set the FRAM high_water_mark
@@ -378,13 +382,13 @@ void status_framHighWaterMark(uint32_t num_messages)
     }
 }
 
-/**
- * Clear the FRAM high_water_mark
- */
-void status_clearframHighWaterMark(void)
-{
-    dev_status.system.fram.high_water_mark = 0;
-}
+// /**
+//  * Clear the FRAM high_water_mark
+//  */
+// void status_clearframHighWaterMark(void)
+// {
+//     dev_status.system.fram.high_water_mark = 0;
+// }
 
 // --------------------------------- END FRAM
 
@@ -400,7 +404,7 @@ void status_clearframHighWaterMark(void)
 /**
  * Prints the status message to the console
  */
-void status_printStatusMessage(void)
+void status_printStatusStruct(void)
 {
     printf("*************** Status struct ***************\n");
 
@@ -411,7 +415,7 @@ void status_printStatusMessage(void)
 
     printf("wifi:\n");
     printf("\tdisconnections: %d\n", dev_status.wifi.disconnections);
-    printf("\trssi: %d\n", dev_status.wifi.rssi);
+    printf("\trssi: %d\n", dev_status.wifi.rssi_low_mark);
 
     printf("mqtt:\n");
     printf("\tupload_errors: %d\n", dev_status.mqtt.upload_errors);
@@ -432,4 +436,29 @@ void status_printStatusMessage(void)
     printf("\t\thigh_water_mark: %d\n", dev_status.system.fram.high_water_mark);
 
     printf("---------------------------------------------\n");
+}
+
+/**
+ * Resets all the count and water mark variables in the status struct
+ */
+void status_resetStruct(void)
+{
+    // wifi
+    dev_status.wifi.disconnections = 0;
+
+    // mqtt
+    dev_status.mqtt.upload_errors = 0;
+    dev_status.mqtt.config_read_errors = 0;
+
+    // time
+    dev_status.system.time.ntp_errors = 0;
+    dev_status.system.time.system_time_update_errors = 0;
+    dev_status.system.time.rtc_set_time_errors = 0;
+    dev_status.system.time.rtc_read_errors = 0;
+
+    // fram
+    dev_status.system.fram.read_errors = 0;
+    dev_status.system.fram.write_errors = 0;
+    dev_status.system.fram.alignment_errors = 0;
+    dev_status.system.fram.high_water_mark = 0;
 }

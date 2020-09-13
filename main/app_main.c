@@ -90,6 +90,7 @@ void Fram_Task_Code(void *pvParameters)
                 ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
                 rtc_clear_alarm();
             }
+            status_printStatusStruct();
         }
 
         uint64_t telemetry_to_store = 0;
@@ -101,10 +102,12 @@ void Fram_Task_Code(void *pvParameters)
             if (write_telemetry(telemetry_to_store) == false)
             {
                 ESP_LOGE(TAG, "error writing telemetry");
+                status_incrementFramWriteErrors();
             }
             else
             {
                 ESP_LOGI(TAG, "telemetry successfully stored in FRAM");
+                status_framHighWaterMark(get_stored_messages_count());
             }
         }
 
@@ -113,7 +116,7 @@ void Fram_Task_Code(void *pvParameters)
         {
             if (telemetry_to_delete > CONFIG_LAST_KNOWN_UNIX)
             {
-                // Store telemetry in FRAM
+                // Delete telemetry from FRAM
                 if (delete_last_read_telemetry(telemetry_to_delete) == true)
                 {
                     ESP_LOGI(TAG, "telemetry successfully deleted from FRAM");
@@ -144,6 +147,7 @@ void Fram_Task_Code(void *pvParameters)
             else
             {
                 ESP_LOGE(TAG, "error in data read from fram");
+                status_incrementFramReadErrors();
             }
         }
 
@@ -225,8 +229,14 @@ void Upload_Task_Code(void *pvParameters)
             if (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT)
             {
                 ESP_LOGE(TAG, "WiFi not connected (ESP_ERR_WIFI_NOT_CONNECT)");
+                status_incrementWifiDisconnections();
                 vTaskDelay(5000 / portTICK_PERIOD_MS);
             }
+            else
+            {
+                status_setRssiLowWaterMark(ap_info.rssi);
+            }
+
         } while (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT);
 
         // ============ MQTT ============
@@ -345,6 +355,7 @@ void Upload_Task_Code(void *pvParameters)
             {
                 error_count++;
                 ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!!");
+                status_incrementMqttUploadErrors();
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
 
@@ -450,7 +461,7 @@ void app_main(void)
     // status_setOnMains(true);
     // status_setBatteryVoltage(1234);
 
-    status_printStatusMessage();
+    status_printStatusStruct();
 
     // Check if we are on battery or mains
 

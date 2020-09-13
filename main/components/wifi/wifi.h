@@ -13,6 +13,9 @@
 
 #include "nvs_flash.h"
 
+// // status
+// #include "components/status/status.h"
+
 // Prototypes
 void wifi_init_sta(void);
 
