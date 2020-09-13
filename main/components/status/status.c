@@ -7,7 +7,7 @@ static void status_setBatteryVoltage(uint32_t voltage);
 
 typedef struct power_status
 {
-    uint32_t battery_voltage;
+    uint32_t battery_voltage; // Battery voltage in mV (voltage divider already factored in)
     int8_t battery_charge_status;
     int8_t on_mains;
 } power_status;
@@ -83,6 +83,8 @@ static device_status dev_status = {
         },
     },
 };
+
+// =========================================================== POWER
 
 /**
  * Sets the battery voltage in the status struct
@@ -172,6 +174,220 @@ void status_evaluatePower(void)
     }
 }
 
+// --------------------------------- END POWER
+
+// =========================================================== WIFI
+
+/**
+ * Set the RSSI in the status struct
+ */
+void status_setRssi(int8_t rssi)
+{
+    dev_status.wifi.rssi = rssi;
+}
+
+/**
+ * Increment the wifi disconnections count
+ */
+void status_incrementWifiDisconnections(void)
+{
+    dev_status.wifi.disconnections++;
+}
+
+/**
+ * Clear the wifi disconnections count
+ */
+void status_clearWifiDisconnections(void)
+{
+    dev_status.wifi.disconnections = 0;
+}
+
+// --------------------------------- END WIFI
+
+// =========================================================== MQTT
+
+/**
+ * Increment the MQTT upload errors count
+ */
+void status_incrementMqttUploadErrors(void)
+{
+    dev_status.mqtt.upload_errors++;
+}
+
+/**
+ * Clear the MQTT upload errors count
+ */
+void status_clearMqttUploadErrors(void)
+{
+    dev_status.mqtt.upload_errors = 0;
+}
+
+/**
+ * Increment the MQTT config_read_errors count
+ * 
+ * Errors if the configuration message could not be parsed
+ */
+void status_incrementMqttConfigReadErrors(void)
+{
+    dev_status.mqtt.config_read_errors++;
+}
+
+/**
+ * Clear the MQTT config_read_errors count
+ */
+void status_clearMqttConfigReadErrors(void)
+{
+    dev_status.mqtt.config_read_errors = 0;
+}
+
+// --------------------------------- END MQTT
+
+// =========================================================== TIME
+
+/**
+ * Increment the NTP errors count
+ */
+void status_incrementNtpErrors(void)
+{
+    dev_status.system.time.ntp_errors++;
+}
+
+/**
+ * Clear the NTP errors count
+ */
+void status_clearNtpErrors(void)
+{
+    dev_status.system.time.ntp_errors = 0;
+}
+
+/**
+ * Increment the system_time_update_errors count
+ */
+void status_incrementSysTimeUpdateErrors(void)
+{
+    dev_status.system.time.system_time_update_errors++;
+}
+
+/**
+ * Clear the system_time_update_errors count
+ */
+void status_clearSysTimeUpdateErrors(void)
+{
+    dev_status.system.time.system_time_update_errors = 0;
+}
+
+/**
+ * Increment the rtc_set_time_errors count
+ */
+void status_incrementRtcSetErrors(void)
+{
+    dev_status.system.time.rtc_set_time_errors++;
+}
+
+/**
+ * Clear the rtc_set_time_errors count
+ */
+void status_clearRtcSetErrors(void)
+{
+    dev_status.system.time.rtc_set_time_errors = 0;
+}
+
+/**
+ * Increment the rtc_read_errors count
+ */
+void status_incrementRtcReadErrors(void)
+{
+    dev_status.system.time.rtc_read_errors++;
+}
+
+/**
+ * Clear the rtc_read_errors count
+ */
+void status_clearRtcReadErrors(void)
+{
+    dev_status.system.time.rtc_read_errors = 0;
+}
+
+// --------------------------------- END TIME
+
+// =========================================================== FRAM
+
+/**
+ * Increment the FRAM read_errors count
+ */
+void status_incrementFramReadErrors(void)
+{
+    dev_status.system.fram.read_errors++;
+}
+
+/**
+ * Clear the FRAM read_errors count
+ */
+void status_clearFramReadErrors(void)
+{
+    dev_status.system.fram.read_errors = 0;
+}
+
+/**
+ * Increment the FRAM write_errors count
+ */
+void status_incrementFramWriteErrors(void)
+{
+    dev_status.system.fram.write_errors++;
+}
+
+/**
+ * Clear the FRAM write_errors count
+ */
+void status_clearFramWriteErrors(void)
+{
+    dev_status.system.fram.write_errors = 0;
+}
+
+/**
+ * Increment the FRAM alignment_errors count
+ * 
+ * Errors where the top and bottom aren't 8 apart etc.
+ */
+void status_incrementFramAlignmentErrors(void)
+{
+    dev_status.system.fram.alignment_errors++;
+}
+
+/**
+ * Clear the FRAM alignment_errors count
+ */
+void status_clearFramAlignmentErrors(void)
+{
+    dev_status.system.fram.alignment_errors = 0;
+}
+
+/**
+ * Set the FRAM high_water_mark
+ * 
+ * Max number of messages stored in fram
+ * 
+ * Function checks the current high mark vs the input parameter
+ * and updates the status struct if necessary
+ */
+void status_framHighWaterMark(uint32_t num_messages)
+{
+    if (num_messages > dev_status.system.fram.high_water_mark)
+    {
+        dev_status.system.fram.high_water_mark = num_messages;
+    }
+}
+
+/**
+ * Clear the FRAM high_water_mark
+ */
+void status_clearframHighWaterMark(void)
+{
+    dev_status.system.fram.high_water_mark = 0;
+}
+
+// --------------------------------- END FRAM
+
 /**
  * Allocate memory on the heap for the status message
  * 
@@ -187,9 +403,33 @@ void status_evaluatePower(void)
 void status_printStatusMessage(void)
 {
     printf("*************** Status struct ***************\n");
+
     printf("power:\n");
     printf("\tbattery_voltage: %d\n", dev_status.power.battery_voltage);
     printf("\tbattery_charge_status: %d\n", dev_status.power.battery_charge_status);
     printf("\ton_mains: %d\n", dev_status.power.on_mains);
+
+    printf("wifi:\n");
+    printf("\tdisconnections: %d\n", dev_status.wifi.disconnections);
+    printf("\trssi: %d\n", dev_status.wifi.rssi);
+
+    printf("mqtt:\n");
+    printf("\tupload_errors: %d\n", dev_status.mqtt.upload_errors);
+    printf("\tconfig_read_errors: %d\n", dev_status.mqtt.config_read_errors);
+
+    printf("system:\n");
+
+    printf("\ttime:\n");
+    printf("\t\tntp_errors: %d\n", dev_status.system.time.ntp_errors);
+    printf("\t\tsystem_time_update_errors: %d\n", dev_status.system.time.system_time_update_errors);
+    printf("\t\trtc_set_time_errors: %d\n", dev_status.system.time.rtc_set_time_errors);
+    printf("\t\trtc_read_errors: %d\n", dev_status.system.time.rtc_read_errors);
+
+    printf("\tfram:\n");
+    printf("\t\tread_errors: %d\n", dev_status.system.fram.read_errors);
+    printf("\t\twrite_errors: %d\n", dev_status.system.fram.write_errors);
+    printf("\t\talignment_errors: %d\n", dev_status.system.fram.alignment_errors);
+    printf("\t\thigh_water_mark: %d\n", dev_status.system.fram.high_water_mark);
+
     printf("---------------------------------------------\n");
 }
