@@ -13,16 +13,12 @@ static const char *TAG = "MQTT";
  */
 void mqtt_init(void)
 {
-    // printf("theeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n");
-    ESP_LOGI(TAG, "MQTT init");
     esp_err_t res = get_device_id(device_id);
 
     printf("res: %d, dev id: %s\n", res, device_id);
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_LOGI(TAG, "MQTT init done");
-    // printf("fuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuck\n");
-
 }
 
 esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)

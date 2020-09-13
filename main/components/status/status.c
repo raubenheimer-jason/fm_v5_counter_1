@@ -120,6 +120,30 @@ static void status_setOnMains(int8_t mains)
 }
 
 /**
+ * Check if the device is running on mains or battery
+ * 
+ * 1  = device on mains power
+ * 0  = device running on battery power
+ * -1 = error reading the pin
+ */
+int8_t status_onMains(void)
+{
+    uint32_t on_mains_pin_value = gpio_get_level(CONFIG_MAINS_SENSE_PIN);
+    if (on_mains_pin_value == 0)
+    {
+        return 0;
+    }
+    else if (on_mains_pin_value == 1)
+    {
+        return 1;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+/**
  * Checks:
  *  - battery voltage
  *  - battery charge status
@@ -158,13 +182,28 @@ void status_evaluatePower(void)
         status_setBatteryChargeStatus(-1);
     }
 
+    // // Check if the device is on mains power or on battery
+    // uint32_t on_mains_pin_value = gpio_get_level(CONFIG_MAINS_SENSE_PIN);
+    // if (on_mains_pin_value == 0)
+    // {
+    //     status_setOnMains(0);
+    // }
+    // else if (on_mains_pin_value == 1)
+    // {
+    //     status_setOnMains(1);
+    // }
+    // else
+    // {
+    //     status_setOnMains(-1);
+    // }
+
     // Check if the device is on mains power or on battery
-    uint32_t on_mains_pin_value = gpio_get_level(CONFIG_MAINS_SENSE_PIN);
-    if (on_mains_pin_value == 0)
+    int8_t on_mains = status_onMains();
+    if (on_mains == 0)
     {
         status_setOnMains(0);
     }
-    else if (on_mains_pin_value == 1)
+    else if (on_mains == 1)
     {
         status_setOnMains(1);
     }

@@ -70,7 +70,13 @@ extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pe
 
 // ====================================================== STATUS
 
-uint8_t minute_count = 0; // count of the minutes to know when an hour has passed (for uploading the status)
+uint8_t minute_count = 61; // Force status update on restart. Count of the minutes to know when an hour has passed (for uploading the status)
+/* on_mains_flag
+    1  = device on mains power
+    0  = device running on battery power
+    -1 = error reading the pin
+*/
+int8_t on_mains_flag = 0; // default on battery power to start??
 
 // ------------------------------------- END STATUS
 
@@ -96,7 +102,6 @@ void Fram_Task_Code(void *pvParameters)
                 ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
                 rtc_clear_alarm();
             }
-            // status_printStatusStruct();
             minute_count++;
             printf("minutes passed: %d\n", minute_count);
         }
@@ -140,7 +145,6 @@ void Fram_Task_Code(void *pvParameters)
 
             uint32_t unix_time = telemetry_to_upload >> 32;
 
-            // if (unix_time > last_known_unix)
             if (unix_time > CONFIG_LAST_KNOWN_UNIX)
             {
                 if (xQueueSend(upload_queue, &telemetry_to_upload, 0))
@@ -226,6 +230,10 @@ void Upload_Task_Code(void *pvParameters)
     uint32_t success_count = 0;
     uint32_t error_count = 0;
 
+    int8_t enter_deep_sleep_flag = 0;         // flag which gets triggered when running on battery power
+    int8_t software_update_flag = 0;          // flag to indicate a software update is avaliable
+    int8_t telemetry_upload_pending_flag = 0; // flag to indicate that there is still telemetry pending
+
     for (;;)
     {
         esp_err_t wifi_info_res = ESP_ERR_WIFI_NOT_CONNECT;
@@ -310,7 +318,12 @@ void Upload_Task_Code(void *pvParameters)
             else // just carry on as normal
             {
                 need_to_upload_flag = true;
+                telemetry_upload_pending_flag = 1; // to prevent deep sleep (on battery) if there is telemetry pending
             }
+        }
+        else
+        {
+            telemetry_upload_pending_flag = 0;
         }
 
         if (telemetry_to_upload > 0 && need_to_upload_flag == true) // keep trying to send the message until successful. If we dont have this, and the send fails, our queue will be empty but the FRAM task wont send anything else because we havent sent an ack
@@ -379,9 +392,26 @@ void Upload_Task_Code(void *pvParameters)
 
         // ================================= STATUS Upload stuff =================================
 
-        if (minute_count >= CONFIG_STATUS_UPLOAD_INTERVAL_MIN)
+        // Check if we are on mains or battery (and if there was a change from battery to mains)
+        int8_t on_mains = status_onMains();
+        if (on_mains == 1 && on_mains_flag == 0) // on_mains == mains power, on_mains_flag == battery power
+        {
+            on_mains_flag = 1; // update the on_mains_flag
+            minute_count = 61; // force the status update
+        }
+        else if (on_mains == 0 && on_mains_flag == 1)
+        {
+            on_mains_flag = 0; // update the on_mains_flag
+            minute_count = 61; // force the status update
+            enter_deep_sleep_flag = 1;
+        }
+
+        if (minute_count > CONFIG_STATUS_UPLOAD_INTERVAL_MIN)
         {
             ESP_LOGI(TAG, "***------------------------------------ UPLOAD STATUS ------------------------------------***");
+
+            // Evaluate latest power status before upload
+            status_evaluatePower();
 
             // UPLOAD STATUS HERE
             int32_t upload_res = 1;
@@ -393,9 +423,13 @@ void Upload_Task_Code(void *pvParameters)
             {
                 // reset status struct
                 status_resetStruct();
-                // minute_count = 1 // (or is it 0?? --> make sure to initialise the variable to the correct one)
-                minute_count = 1;
+                minute_count = 1; // (or is it 0?? --> make sure to initialise the variable to the correct one)
             }
+        }
+
+        if (enter_deep_sleep_flag == 1 && software_update == 0 && telemetry_upload_pending == 0)
+        {
+            // enter deep sleep
         }
     }
 }
@@ -499,10 +533,6 @@ void app_main(void)
 
     // If battery, set that in status, collect other necessary data (such as battery level), upload that, sleep
 
-    // // Tasks
-    // start_fram_task();
-    // start_upload_task();
-
     // Time
     time_init();
 
@@ -511,8 +541,6 @@ void app_main(void)
 
     // NTP
     initialize_sntp();
-
-    // printf("what????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n");
 
     // MQTT
     mqtt_init(); // make sure NVS is initiated first (done in wifi)

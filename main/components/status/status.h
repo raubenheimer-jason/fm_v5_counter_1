@@ -16,6 +16,7 @@ void status_resetStruct(void);
 void status_printStatusStruct(void);
 
 // power
+int8_t status_onMains(void);
 void status_evaluatePower(void);
 // wifi
 void status_setRssiLowWaterMark(int8_t rssi);  // added
