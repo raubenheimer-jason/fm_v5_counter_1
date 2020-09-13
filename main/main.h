@@ -8,4 +8,6 @@ extern xSemaphoreHandle rtc_alarm_flag_gatekeeper;
 
 // extern char device_id[20];
 
+
+
 #endif // _MAIN_H_

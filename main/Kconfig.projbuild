@@ -49,7 +49,8 @@ menu "Example Configuration"
     
     config BAT_SENSE_PIN
         int
-        default 10
+        default 9  
+                    # Actually GPIO 10 (ADC1_CHANNEL_9)
 
     config SENSOR_TYPE_PIN
         int

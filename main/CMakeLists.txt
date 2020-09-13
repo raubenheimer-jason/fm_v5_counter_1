@@ -15,6 +15,7 @@ idf_component_register(
         "components/crypto/sha256.c"
         "components/jwt/jwt.c"
         "components/mqtt/mqtt.c"
+        "components/status/status.c"
     INCLUDE_DIRS
         "."
 )

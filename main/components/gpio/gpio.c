@@ -90,6 +90,10 @@ static void gpio_interrupt_init(void)
     // Change the interrupt type for the counter pin
     gpio_set_intr_type(CONFIG_COUNTER_PIN, GPIO_INTR_POSEDGE);
 
+    // Remove interrupts from battery charge status pin & mains sense pin
+    gpio_set_intr_type(CONFIG_BAT_STATUS_PIN, GPIO_INTR_DISABLE);
+    gpio_set_intr_type(CONFIG_MAINS_SENSE_PIN, GPIO_INTR_DISABLE);
+
     // hook isr handlers for specific gpio pins
     gpio_isr_handler_add(CONFIG_RTC_ALARM_PIN, rtc_alarm_isr, (void *)CONFIG_RTC_ALARM_PIN);
     gpio_isr_handler_add(CONFIG_COUNTER_PIN, counter_isr, (void *)CONFIG_COUNTER_PIN);

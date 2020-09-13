@@ -35,6 +35,9 @@
 // MQTT
 #include "components/mqtt/mqtt.h"
 
+// status
+#include "components/status/status.h"
+
 // // For printing uint64_t
 // #define __STDC_FORMAT_MACROS
 // #include <inttypes.h>
@@ -440,6 +443,20 @@ void app_main(void)
 
     // GPIO
     gpio_initial_setup();
+
+    status_evaluatePower();
+
+    // status_setBatteryChargeStatus(true);
+    // status_setOnMains(true);
+    // status_setBatteryVoltage(1234);
+
+    status_printStatusMessage();
+
+    // Check if we are on battery or mains
+
+    // If mains, set that in status, carry on as normal
+
+    // If battery, set that in status, collect other necessary data (such as battery level), upload that, sleep
 
     // Tasks
     start_fram_task();
