@@ -66,7 +66,13 @@ const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
 extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
 
-// ====================================================== END MQTT
+// ------------------------------------- END MQTT
+
+// ====================================================== STATUS
+
+uint8_t minute_count = 0; // count of the minutes to know when an hour has passed (for uploading the status)
+
+// ------------------------------------- END STATUS
 
 void set_restart_required_flag()
 {
@@ -90,7 +96,9 @@ void Fram_Task_Code(void *pvParameters)
                 ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
                 rtc_clear_alarm();
             }
-            status_printStatusStruct();
+            // status_printStatusStruct();
+            minute_count++;
+            printf("minutes passed: %d\n", minute_count);
         }
 
         uint64_t telemetry_to_store = 0;
@@ -365,7 +373,29 @@ void Upload_Task_Code(void *pvParameters)
         }
         else
         {
+            // if there is no telemetry to upload delay and look again after some time (give the other tasks CPU time)
             vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+
+        // ================================= STATUS Upload stuff =================================
+
+        if (minute_count >= CONFIG_STATUS_UPLOAD_INTERVAL_MIN)
+        {
+            ESP_LOGI(TAG, "***------------------------------------ UPLOAD STATUS ------------------------------------***");
+
+            // UPLOAD STATUS HERE
+            int32_t upload_res = 1;
+            status_printStatusStruct();
+            // int32_t upload_res = esp_mqtt_client_publish(client, telemetry_topic, telemetry_buf, 0, 1, 0);
+
+            // IF upload was successful
+            if (upload_res > 0)
+            {
+                // reset status struct
+                status_resetStruct();
+                // minute_count = 1 // (or is it 0?? --> make sure to initialise the variable to the correct one)
+                minute_count = 1;
+            }
         }
     }
 }
@@ -469,9 +499,9 @@ void app_main(void)
 
     // If battery, set that in status, collect other necessary data (such as battery level), upload that, sleep
 
-    // Tasks
-    start_fram_task();
-    start_upload_task();
+    // // Tasks
+    // start_fram_task();
+    // start_upload_task();
 
     // Time
     time_init();
@@ -482,6 +512,12 @@ void app_main(void)
     // NTP
     initialize_sntp();
 
+    // printf("what????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n");
+
     // MQTT
     mqtt_init(); // make sure NVS is initiated first (done in wifi)
+
+    // Tasks
+    start_fram_task();
+    start_upload_task();
 }

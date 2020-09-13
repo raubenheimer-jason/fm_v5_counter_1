@@ -3,11 +3,11 @@ menu "Example Configuration"
 # WIFI ---------------------------------------------- WIFI
     config WIFI_SSID
         string
-        default "VodafoneMobileWiFi-9ADC"
-    
+        default "Uitsig"
+
     config WIFI_PASSWORD
         string
-        default "44SChscH"
+        default "0834567432"
 # END WIFI ________________________ END WIFI
 
 # KEYS ---------------------------------------------- KEYS
@@ -119,6 +119,15 @@ menu "Example Configuration"
         default  8883
 
 # END GCP ________________________ END GCP
+
+# STATUS ---------------------------------------------- STATUS
+
+    config STATUS_UPLOAD_INTERVAL_MIN
+        int
+        default  60
+
+    # END STATUS ________________________ END STATUS
+
 
 
         

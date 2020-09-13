@@ -47,8 +47,14 @@ static const char *TAG = "FRAM";
 static uint32_t top;
 static uint32_t bottom;
 
-// Static function prototypes
+// This is only used for testing (but don't want to delete the function)
+#define INCLUDE_READ_STATUS_REGISTER 0
+
+// ======================================= Static function prototypes =======================================
+
+#if INCLUDE_READ_STATUS_REGISTER
 static uint8_t read_status_register();
+#endif // INCLUDE_READ_STATUS_REGISTER
 static uint8_t fram_read_byte(const uint32_t address);
 static void fram_write_byte(const uint32_t address, uint8_t data_byte);
 static void set_top(uint32_t top_addr);
@@ -313,6 +319,7 @@ static void fram_internal_setup()
     ESP_LOGI(TAG, "internal setup complete");
 }
 
+#if INCLUDE_READ_STATUS_REGISTER
 /**
  * Read the status register
  * Expected result: 0b01000000
@@ -340,6 +347,7 @@ static uint8_t read_status_register()
 
     return read_byte;
 }
+#endif // INCLUDE_READ_STATUS_REGISTER
 
 /**
  * Read single byte from FRAM at the specified address
@@ -347,7 +355,7 @@ static uint8_t read_status_register()
 static uint8_t fram_read_byte(const uint32_t address)
 {
     uint8_t read_byte;
-    esp_err_t res;
+    // esp_err_t res;
     spi_transaction_t t;
 
     memset(&t, 0, sizeof(t));
@@ -356,7 +364,8 @@ static uint8_t fram_read_byte(const uint32_t address)
     t.addr = address;
     t.flags = SPI_TRANS_USE_RXDATA;
     t.rxlength = 8;
-    res = spi_device_polling_transmit(spi_device, &t);
+    // res = spi_device_polling_transmit(spi_device, &t);
+    spi_device_polling_transmit(spi_device, &t);
     read_byte = t.rx_data[0];
 
     return read_byte;
@@ -367,20 +376,22 @@ static uint8_t fram_read_byte(const uint32_t address)
  */
 static void fram_write_byte(const uint32_t address, uint8_t data_byte)
 {
-    esp_err_t res;
+    // esp_err_t res;
     spi_transaction_t t;
 
     memset(&t, 0, sizeof(t));
     t.length = 8;
     t.cmd = WREN;
-    res = spi_device_polling_transmit(spi_device, &t);
+    // res = spi_device_polling_transmit(spi_device, &t);
+    spi_device_polling_transmit(spi_device, &t);
     memset(&t, 0, sizeof(t));
     t.cmd = WRITE;
     t.addr = address;
     t.tx_data[0] = data_byte;
     t.length = 8;
     t.flags = SPI_TRANS_USE_TXDATA;
-    res = spi_device_polling_transmit(spi_device, &t);
+    // res = spi_device_polling_transmit(spi_device, &t);
+    spi_device_polling_transmit(spi_device, &t);
 }
 
 /**
