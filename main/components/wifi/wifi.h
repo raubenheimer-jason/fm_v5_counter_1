@@ -13,6 +13,9 @@
 
 #include "nvs_flash.h"
 
+// GPIO
+#include "components/gpio/gpio.h" // for on_mains_flag
+
 // // status
 // #include "components/status/status.h"
 

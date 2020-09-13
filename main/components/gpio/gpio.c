@@ -24,8 +24,12 @@ void gpio_initial_setup(void)
     gpio_interrupt_init();
     gpio_leds_init();
 
-    gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
-    gpio_set_level(CONFIG_MQTT_LED_PIN, 0);
+    // if (on_mains_flag == 1) // only turn the LED on if device is on mains power
+    // {
+    //     printf("turning led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
+    //     gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
+    // }
+    // gpio_set_level(CONFIG_MQTT_LED_PIN, 0);
 
     ESP_LOGI(TAG, "GPIO init done");
 }

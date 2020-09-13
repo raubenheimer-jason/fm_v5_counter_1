@@ -29,7 +29,12 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
+
+        if (on_mains_flag == 1) // only turn LED on if on mains power
+        {
+            // printf("turning mqtt led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
+            gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
+        }
 
         char *sub_topic_config = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/config") + 1); // Check for error allocating memory
         sub_topic_config[0] = '\0';
@@ -55,6 +60,11 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
+        if (on_mains_flag == 1) // only turn LED on if on mains power
+        {
+            // printf("turning mqtt led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
+            gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
+        }
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:

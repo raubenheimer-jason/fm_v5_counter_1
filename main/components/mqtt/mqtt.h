@@ -20,6 +20,9 @@
 // JWT
 #include "components/jwt/jwt.h"
 
+// GPIO
+#include "components/gpio/gpio.h" // for on_mains_flag
+
 // Prototypes
 void mqtt_init(void);
 bool jwt_update_check(void);

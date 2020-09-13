@@ -63,7 +63,7 @@ void rtc_clear_alarm()
     // write new register value
     rtc_write_reg(STATUS_REGISTER_ADDR, status_register_value); // 0b10001000
 
-    ESP_LOGI(TAG, "cleared alarm 2");
+    ESP_LOGD(TAG, "cleared alarm 2");
 }
 
 /**

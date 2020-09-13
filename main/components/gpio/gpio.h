@@ -19,4 +19,7 @@
 // Prototypes
 void gpio_initial_setup(void);
 
+// Declerations
+extern int8_t on_mains_flag; // Don't have any LED's on when on battery power
+
 #endif // _GPIO_H_

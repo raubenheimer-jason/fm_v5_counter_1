@@ -76,7 +76,7 @@ uint8_t minute_count = 61; // Force status update on restart. Count of the minut
     0  = device running on battery power
     -1 = error reading the pin
 */
-int8_t on_mains_flag = 0; // default on battery power to start??
+int8_t on_mains_flag; // default on battery power to start??
 
 // ------------------------------------- END STATUS
 
@@ -103,13 +103,13 @@ void Fram_Task_Code(void *pvParameters)
                 rtc_clear_alarm();
             }
             minute_count++;
-            printf("minutes passed: %d\n", minute_count);
+            ESP_LOGD(TAG, "minutes passed: %d", minute_count);
         }
 
         uint64_t telemetry_to_store = 0;
         if (xQueueReceive(fram_store_queue, &telemetry_to_store, 0))
         {
-            ESP_LOGI(TAG, "received telemetry_to_store");
+            ESP_LOGD(TAG, "received telemetry_to_store");
 
             // Store telemetry in FRAM
             if (write_telemetry(telemetry_to_store) == false)
@@ -119,7 +119,7 @@ void Fram_Task_Code(void *pvParameters)
             }
             else
             {
-                ESP_LOGI(TAG, "telemetry successfully stored in FRAM");
+                ESP_LOGD(TAG, "telemetry successfully stored in FRAM");
                 status_framHighWaterMark(get_stored_messages_count());
             }
         }
@@ -132,7 +132,7 @@ void Fram_Task_Code(void *pvParameters)
                 // Delete telemetry from FRAM
                 if (delete_last_read_telemetry(telemetry_to_delete) == true)
                 {
-                    ESP_LOGI(TAG, "telemetry successfully deleted from FRAM");
+                    ESP_LOGD(TAG, "telemetry successfully deleted from FRAM");
                 }
             }
         }
@@ -141,7 +141,7 @@ void Fram_Task_Code(void *pvParameters)
 
         if (telemetry_to_upload > 0)
         {
-            ESP_LOGI(TAG, "send telemetry from Fram_Task to Upload_Task");
+            ESP_LOGD(TAG, "send telemetry from Fram_Task to Upload_Task");
 
             uint32_t unix_time = telemetry_to_upload >> 32;
 
@@ -149,11 +149,11 @@ void Fram_Task_Code(void *pvParameters)
             {
                 if (xQueueSend(upload_queue, &telemetry_to_upload, 0))
                 {
-                    ESP_LOGI(TAG, "telemetry sent to Upload_Task");
+                    ESP_LOGD(TAG, "telemetry sent to Upload_Task");
                 }
                 else
                 {
-                    ESP_LOGI(TAG, "upload_queue must be full");
+                    ESP_LOGD(TAG, "upload_queue must be full");
                 }
             }
             else
@@ -168,6 +168,33 @@ void Fram_Task_Code(void *pvParameters)
 }
 
 // ================================================================================================= FRAM TASK
+
+void mains_flag_evaluation(void)
+{
+    // Check if we are on mains or battery power.
+    // Do this before WiFi and MQTT so the LED's don't turn on if device is on battery
+    int8_t on_mains = status_onMains();
+    if (on_mains_flag != on_mains)
+    {
+        if (on_mains == 0) // Not on mains (on battery)
+        {
+            ESP_LOGW(TAG, "device on battery power");
+            on_mains_flag = 0;
+            minute_count = 61; // force the status update
+        }
+        else if (on_mains == 1)
+        {
+            ESP_LOGI(TAG, "device on mains power");
+            on_mains_flag = 1;
+            minute_count = 61; // force the status update
+        }
+        else
+        {
+            ESP_LOGE(TAG, "weird error - is the device on battery or on mains power?");
+            minute_count = 61; // force the status update
+        }
+    }
+}
 
 // ================================================================================================= UPLOAD TASK
 
@@ -230,12 +257,47 @@ void Upload_Task_Code(void *pvParameters)
     uint32_t success_count = 0;
     uint32_t error_count = 0;
 
-    int8_t enter_deep_sleep_flag = 0;         // flag which gets triggered when running on battery power
-    int8_t software_update_flag = 0;          // flag to indicate a software update is avaliable
-    int8_t telemetry_upload_pending_flag = 0; // flag to indicate that there is still telemetry pending
+    // int8_t enter_deep_sleep_flag = 0;         // flag which gets triggered when running on battery power
+    // int8_t software_update_flag = 0;          // flag to indicate a software update is avaliable
+    // int8_t telemetry_upload_pending_flag = 0; // flag to indicate that there is still telemetry pending
+
+    // on_mains_flag = -1;
 
     for (;;)
     {
+        // // Check if we are on mains or battery power.
+        // // Do this before WiFi and MQTT so the LED's don't turn on if device is on battery
+        // int8_t on_mains = status_onMains();
+        // if (on_mains_flag != on_mains)
+        // {
+        //     if (on_mains == 0) // Not on mains (on battery)
+        //     {
+        //         ESP_LOGW(TAG, "device on battery power");
+        //         on_mains_flag = 0;
+        //         minute_count = 61; // force the status update
+        //     }
+        //     else if (on_mains == 1)
+        //     {
+        //         ESP_LOGI(TAG, "device on mains power");
+        //         on_mains_flag = 1;
+        //         minute_count = 61; // force the status update
+        //     }
+        //     else
+        //     {
+        //         ESP_LOGI(TAG, "weird error - is the device on battery or on mains power?");
+        //         minute_count = 61; // force the status update
+        //     }
+        // }
+        // if ((on_mains == 1 && on_mains_flag == 0) || (on_mains == 0 && on_mains_flag == 1)) // on_mains == mains power, on_mains_flag == battery power
+        // {
+        //     ESP_LOGI(TAG, "on_mains_flag: %d, status_onMains(): %d", on_mains_flag, on_mains);
+        //     on_mains_flag = !on_mains_flag; // update the on_mains_flag
+        //     minute_count = 61;              // force the status update
+        //     ESP_LOGI(TAG, "new on_mains_flag: %d", on_mains_flag);
+        // }
+
+        mains_flag_evaluation();
+
         esp_err_t wifi_info_res = ESP_ERR_WIFI_NOT_CONNECT;
         do
         {
@@ -305,26 +367,26 @@ void Upload_Task_Code(void *pvParameters)
 
                 // uint64_t i;
                 // printf("\t\tt.addr: %" PRIu64 "\n", t.addr);
-                ESP_LOGI(TAG, "telemetry_to_upload == previously_uploaded_telemetry (unix: %d, count: %d)", unix_time, count);
+                ESP_LOGD(TAG, "telemetry_to_upload == previously_uploaded_telemetry (unix: %d, count: %d)", unix_time, count);
                 if (xQueueSend(ack_queue, &telemetry_to_upload, 0))
                 {
-                    ESP_LOGI(TAG, "ack sent to Fram_Task");
+                    ESP_LOGD(TAG, "ack sent to Fram_Task");
                 }
                 else
                 {
-                    ESP_LOGI(TAG, "ack_queue must be full");
+                    ESP_LOGD(TAG, "ack_queue must be full");
                 }
             }
             else // just carry on as normal
             {
                 need_to_upload_flag = true;
-                telemetry_upload_pending_flag = 1; // to prevent deep sleep (on battery) if there is telemetry pending
+                // telemetry_upload_pending_flag = 1; // to prevent deep sleep (on battery) if there is telemetry pending
             }
         }
-        else
-        {
-            telemetry_upload_pending_flag = 0;
-        }
+        // else
+        // {
+        //     telemetry_upload_pending_flag = 0;
+        // }
 
         if (telemetry_to_upload > 0 && need_to_upload_flag == true) // keep trying to send the message until successful. If we dont have this, and the send fails, our queue will be empty but the FRAM task wont send anything else because we havent sent an ack
         {
@@ -346,7 +408,7 @@ void Upload_Task_Code(void *pvParameters)
 
             // ============ MQTT ============ END
 
-            printf("upload_res: %d\n", upload_res);
+            // printf("upload_res: %d\n", upload_res);
 
             if (upload_res == 0)
             {
@@ -393,18 +455,20 @@ void Upload_Task_Code(void *pvParameters)
         // ================================= STATUS Upload stuff =================================
 
         // Check if we are on mains or battery (and if there was a change from battery to mains)
-        int8_t on_mains = status_onMains();
-        if (on_mains == 1 && on_mains_flag == 0) // on_mains == mains power, on_mains_flag == battery power
-        {
-            on_mains_flag = 1; // update the on_mains_flag
-            minute_count = 61; // force the status update
-        }
-        else if (on_mains == 0 && on_mains_flag == 1)
-        {
-            on_mains_flag = 0; // update the on_mains_flag
-            minute_count = 61; // force the status update
-            enter_deep_sleep_flag = 1;
-        }
+        // int8_t on_mains = status_onMains();
+        // if ((on_mains == 1 && on_mains_flag == 0) || (on_mains == 0 && on_mains_flag == 1)) // on_mains == mains power, on_mains_flag == battery power
+        // {
+        //     ESP_LOGI(TAG, "on_mains_flag: %d, status_onMains(): %d", on_mains_flag, on_mains);
+        //     on_mains_flag = !on_mains_flag; // update the on_mains_flag
+        //     minute_count = 61;              // force the status update
+        //     ESP_LOGI(TAG, "new on_mains_flag: %d", on_mains_flag);
+        // }
+        // else if (on_mains == 0 && on_mains_flag == 1)
+        // {
+        //     on_mains_flag = 0; // update the on_mains_flag
+        //     minute_count = 61; // force the status update
+        //     // enter_deep_sleep_flag = 1;
+        // }
 
         if (minute_count > CONFIG_STATUS_UPLOAD_INTERVAL_MIN)
         {
@@ -427,10 +491,10 @@ void Upload_Task_Code(void *pvParameters)
             }
         }
 
-        if (enter_deep_sleep_flag == 1 && software_update == 0 && telemetry_upload_pending == 0)
-        {
-            // enter deep sleep
-        }
+        // if (enter_deep_sleep_flag == 1 && software_update == 0 && telemetry_upload_pending == 0)
+        // {
+        //     // enter deep sleep
+        // }
     }
 }
 
@@ -519,13 +583,24 @@ void app_main(void)
     // GPIO
     gpio_initial_setup();
 
-    status_evaluatePower();
+    on_mains_flag = -1; // force the evaluation
+    mains_flag_evaluation();
+
+    // Initial LED states
+    if (on_mains_flag == 1) // only turn the LED on if device is on mains power
+    {
+        // printf("turning led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
+        gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
+    }
+    gpio_set_level(CONFIG_MQTT_LED_PIN, 0);
+
+    // status_evaluatePower();
 
     // status_setBatteryChargeStatus(true);
     // status_setOnMains(true);
     // status_setBatteryVoltage(1234);
 
-    status_printStatusStruct();
+    // status_printStatusStruct();
 
     // Check if we are on battery or mains
 
