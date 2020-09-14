@@ -9,7 +9,4 @@ set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/common_components/protocol_exam
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(fm_v5_counter_1)
 
-target_add_binary_data(fm_v5_counter_1.elf "main/mqtt_google_primary.pem" TEXT)
-target_add_binary_data(fm_v5_counter_1.elf "main/mqtt_google_backup.pem" TEXT)
-
-#target_add_binary_data(fm_v5_counter_1.elf "main/device_private_key.pem" TEXT)
+target_add_binary_data(fm_v5_counter_1.elf "main/mqtt_primary_backup.pem" TEXT)

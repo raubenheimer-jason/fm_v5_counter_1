@@ -203,6 +203,9 @@ static void firmware_update_check(const char *config_data, const int config_data
             char *update_url = getValueFromJson(config_data, config_data_len, update_url_key);
             if (update_url != NULL)
             {
+                ESP_LOGI(TAG, "got update url from config");
+                printf("update_url: %s\n", update_url);
+
                 const char *update_certificate =
                     "-----BEGIN CERTIFICATE-----\n"
                     "MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G\n"
@@ -227,9 +230,7 @@ static void firmware_update_check(const char *config_data, const int config_data
                     "TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==\n"
                     "-----END CERTIFICATE-----\n";
 
-                ESP_LOGI(TAG, "got update url from config");
                 // download firmware update
-                printf("update_url: %s\n", update_url);
                 esp_err_t ret = firmware_update(update_url, update_certificate);
 
                 // if firmware download was successful, set restart_required_flag = true

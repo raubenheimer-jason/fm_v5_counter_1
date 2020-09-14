@@ -24,8 +24,10 @@ char device_id[20];
 
 const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 
-extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
-extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
+// extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
+// extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
+
+extern const uint8_t mqtt_primary_backup_pem[] asm("_binary_mqtt_primary_backup_pem_start");
 
 // ------------------------------------- END MQTT
 
@@ -213,7 +215,9 @@ void Upload_Task_Code(void *pvParameters)
         .username = "unused",
         .password = jwt,
         .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
-        .cert_pem = (const char *)mqtt_google_primary_pem,
+        // .cert_pem = (const char *)mqtt_google_primary_pem,
+        // .cert_pem = (const char *)mqtt_google_backup_pem,
+        .cert_pem = (const char *)mqtt_primary_backup_pem,
         .lwt_qos = 1};
 
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
@@ -248,10 +252,14 @@ void Upload_Task_Code(void *pvParameters)
     {
         mains_flag_evaluation();
 
-        while (mqtt_connected_flag == 0)
+        if (mqtt_connected_flag == 0)
         {
             ESP_LOGW(TAG, "waiting for mqtt to connect...");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            while (mqtt_connected_flag == 0)
+            {
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            }
+            ESP_LOGI(TAG, "mqtt connected!");
         }
 
         esp_err_t wifi_info_res = ESP_ERR_WIFI_NOT_CONNECT;
@@ -285,7 +293,7 @@ void Upload_Task_Code(void *pvParameters)
 
         if (jwt_update_check())
         {
-            free(jwt); // USE REALLOC RATHER ????????????????????????????????????
+            free(jwt); // Free the old jwt pointer
             time(&now);
             jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
             ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
@@ -318,6 +326,16 @@ void Upload_Task_Code(void *pvParameters)
             else
             {
                 ESP_LOGE(TAG, "mqtt stop fail");
+            }
+
+            if (mqtt_connected_flag == 0)
+            {
+                ESP_LOGW(TAG, "waiting for mqtt to connect after jwt refresh...");
+                while (mqtt_connected_flag == 0)
+                {
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                }
+                ESP_LOGI(TAG, "mqtt connected!");
             }
         }
         // ============ MQTT END ============
