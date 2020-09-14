@@ -33,8 +33,6 @@ esp_err_t get_device_id(char device_id[]);
 
 extern char device_id[20];
 
-// extern int8_t use_backup_certificate;
-
 extern int8_t mqtt_connected_flag; // 1 = connected, 0 = not connected // https://stackoverflow.com/questions/1045501/how-do-i-share-variables-between-different-c-files
 
 #endif // _MQTT_H_

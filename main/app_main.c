@@ -1,42 +1,6 @@
 // FM_V5_counter_1
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-#include "esp_system.h"
-#include "esp_event.h"
-#include "esp_netif.h"
-
-#include "esp_log.h"
-#include "mqtt_client.h"
-#include "esp_tls.h"
-#include "esp_ota_ops.h"
-
 #include "main.h"
-
-#include "freertos/queue.h"
-
-// Time
-#include "components/time_init/time_init.h"
-
-// FRAM
-#include "components/fram/fram.h"
-
-// wifi
-#include "components/wifi/wifi.h"
-
-// NTP
-#include "components/ntp/ntp.h"
-
-// GPIO
-#include "components/gpio/gpio.h"
-
-// MQTT
-#include "components/mqtt/mqtt.h"
-
-// status
-#include "components/status/status.h"
 
 // // For printing uint64_t
 // #define __STDC_FORMAT_MACROS
@@ -46,16 +10,11 @@
 
 static const char *TAG = "APP_MAIN";
 
-// Semaphore for rtc_alarm_flag variable
-// SemaphoreHandle_t rtc_alarm_flag_gatekeeper = 0; // binary type because of ISR
-xSemaphoreHandle rtc_alarm_flag_gatekeeper = NULL;
 xSemaphoreHandle status_struct_gatekeeper = NULL;
 
 xQueueHandle fram_store_queue = NULL;
 static xQueueHandle upload_queue = NULL;
 static xQueueHandle ack_queue = NULL;
-
-// bool rtc_alarm_flag = false;
 
 bool restart_required_flag = false;
 
@@ -67,8 +26,6 @@ const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 
 extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
 extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
-
-// extern const char device_private_key[] asm("_binary_device_private_key_pem_start");
 
 // ------------------------------------- END MQTT
 
@@ -94,30 +51,11 @@ void set_restart_required_flag()
 
 void Fram_Task_Code(void *pvParameters)
 {
-    // int8_t received_telemetry = 0; // 0 = no telemetry received, 1 = received telemetry
-
     TickType_t fram_store_ticks = 0; // dont wait first time, there might be a backlog and the chance of a new message in the queue right on startup is unlikely
-
-    // int8_t have_backlog_flag = 0; // 1 = there is a backlog, 0 = there is no backlog
 
     for (;;)
     {
-
-        // if (rtc_alarm_flag == true)
-        // {
-        //     if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
-        //     {
-        //         rtc_alarm_flag = false;
-        //         xSemaphoreGive(rtc_alarm_flag_gatekeeper);
-        //         ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
-        //         rtc_clear_alarm();
-        //     }
-        //     minute_count++;
-        //     ESP_LOGD(TAG, "minutes passed: %d", minute_count);
-        // }
-
         uint64_t telemetry_to_store = 0;
-        // if (xQueueReceive(fram_store_queue, &telemetry_to_store, 0))
         if (xQueueReceive(fram_store_queue, &telemetry_to_store, fram_store_ticks))
         {
             ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
@@ -150,7 +88,6 @@ void Fram_Task_Code(void *pvParameters)
 
         uint64_t telemetry_to_delete = 0;
         if (xQueueReceive(ack_queue, &telemetry_to_delete, 0))
-        // if (xQueueReceive(ack_queue, &telemetry_to_delete, 500 / portTICK_PERIOD_MS))
         {
             if (telemetry_to_delete > CONFIG_LAST_KNOWN_UNIX)
             {
@@ -190,22 +127,12 @@ void Fram_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
             }
-            // printf("-- short ticks to wait --\n");
             fram_store_ticks = 200 / portTICK_PERIOD_MS; // there might be a backlog so dont wait for new telemetry for long
         }
         else
         {
-            // printf("------- long ticks to wait -------\n");
             fram_store_ticks = 10000 / portTICK_PERIOD_MS; // no message backlog in FRAM, just wait for new message
         }
-
-        // else
-        // {
-        //     vTaskDelay(200 / portTICK_PERIOD_MS);
-        // }
-
-        // vTaskDelay(1000 / portTICK_PERIOD_MS); // was 5000
-        // vTaskDelay(200 / portTICK_PERIOD_MS); // was 5000
     }
 }
 
@@ -238,49 +165,6 @@ void mains_flag_evaluation(void)
     }
 }
 
-// void start_mqtt_client(const char *jwt, char *client_id, int8_t use_backup_certificate)
-// {
-//     char *certificate_in_use;
-//     if (use_backup_certificate == 0)
-//     {
-//         ESP_LOGI(TAG, "use primary certificate");
-//         certificate_in_use = mqtt_google_primary_pem;
-//     }
-//     else if (use_backup_certificate == 1)
-//     {
-//         ESP_LOGI(TAG, "use backup certificate");
-//         certificate_in_use = mqtt_google_backup_pem;
-//     }
-//     else
-//     {
-//         ESP_LOGE(TAG, "what certificate are we meant to use?? just use primary");
-//         certificate_in_use = mqtt_google_primary_pem;
-//     }
-
-//     esp_mqtt_client_config_t mqtt_cfg = {
-//         .uri = CONFIG_GCP_URI,   // "mqtts://mqtt.2030.ltsapis.goog:8883"
-//         .host = CONFIG_GCP_HOST, // "mqtt.2030.ltsapis.goog"
-//         .port = CONFIG_GCP_PORT, // 8883
-//         .username = "unused",
-//         .password = jwt,
-//         .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
-//         // .cert_pem = (const char *)mqtt_google_primary_pem,
-//         // .cert_pem = (const char *)mqtt_google_backup_pem,
-//         .cert_pem = (const char *)certificate_in_use,
-//         .lwt_qos = 1};
-
-//     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-//     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-//     esp_err_t register_ret = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-//     printf("register_ret: %d\n", register_ret);
-//     // esp_mqtt_client_stop(client); // might prevent errors where the client is connected and there is a restart?????
-//     esp_err_t disc_ret = esp_mqtt_client_disconnect(client); // might prevent errors where the client is connected and there is a restart?????
-//     printf("disc_ret: %d\n", disc_ret);
-
-//     esp_err_t start_ret = esp_mqtt_client_start(client);
-//     printf("start_ret: %d\n", start_ret);
-// }
-
 // ================================================================================================= UPLOAD TASK
 
 void Upload_Task_Code(void *pvParameters)
@@ -293,7 +177,6 @@ void Upload_Task_Code(void *pvParameters)
     time(&now);
 
     char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
-    // char *jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
 
     printf("jwt: %s\n", jwt);
 
@@ -311,10 +194,6 @@ void Upload_Task_Code(void *pvParameters)
     strcat(client_id, device_id);
     printf("len = %d, client_id: %s\n", strlen(client_id), client_id);
 
-    // int8_t use_backup_certificate = 0;
-    // int8_t certificate_in_use = 1; // 1 = primary, 2 = backup
-    // start_mqtt_client(jwt, client_id, use_backup_certificate);
-
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_GCP_URI,   // "mqtts://mqtt.2030.ltsapis.goog:8883"
         .host = CONFIG_GCP_HOST, // "mqtt.2030.ltsapis.goog"
@@ -323,19 +202,16 @@ void Upload_Task_Code(void *pvParameters)
         .password = jwt,
         .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
         .cert_pem = (const char *)mqtt_google_primary_pem,
-        // .cert_pem = (const char *)mqtt_google_backup_pem, // old
         .lwt_qos = 1};
 
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_err_t register_ret = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
-    printf("register_ret: %d\n", register_ret);
-    // esp_mqtt_client_stop(client); // might prevent errors where the client is connected and there is a restart?????
+    ESP_LOGD(TAG, "register_ret: %d", register_ret);
     esp_err_t disc_ret = esp_mqtt_client_disconnect(client); // might prevent errors where the client is connected and there is a restart?????
-    printf("disc_ret: %d\n", disc_ret);
-
+    ESP_LOGD(TAG, "disc_ret: %d", disc_ret);
     esp_err_t start_ret = esp_mqtt_client_start(client);
-    printf("start_ret: %d\n", start_ret);
+    ESP_LOGD(TAG, "start_ret: %d", start_ret);
 
     // Won't need to free this as it's used throughout the life of the program
     char *telemetry_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
@@ -354,61 +230,11 @@ void Upload_Task_Code(void *pvParameters)
     uint32_t success_count = 0;
     uint32_t error_count = 0;
 
-    // int8_t enter_deep_sleep_flag = 0;         // flag which gets triggered when running on battery power
-    // int8_t software_update_flag = 0;          // flag to indicate a software update is avaliable
-    // int8_t telemetry_upload_pending_flag = 0; // flag to indicate that there is still telemetry pending
-
-    // on_mains_flag = -1;
-
     mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
 
     for (;;)
     {
-        // if (use_backup_certificate == 0 && certificate_in_use == 2)
-        // {
-        //     start_mqtt_client(jwt, client_id, 0);
-        // }
-        // else if (use_backup_certificate == 1 && certificate_in_use == 1)
-        // {
-        //     start_mqtt_client(jwt, client_id, 1);
-        // }
-        // // Check if we are on mains or battery power.
-        // // Do this before WiFi and MQTT so the LED's don't turn on if device is on battery
-        // int8_t on_mains = status_onMains();
-        // if (on_mains_flag != on_mains)
-        // {
-        //     if (on_mains == 0) // Not on mains (on battery)
-        //     {
-        //         ESP_LOGW(TAG, "device on battery power");
-        //         on_mains_flag = 0;
-        //         minute_count = 61; // force the status update
-        //     }
-        //     else if (on_mains == 1)
-        //     {
-        //         ESP_LOGI(TAG, "device on mains power");
-        //         on_mains_flag = 1;
-        //         minute_count = 61; // force the status update
-        //     }
-        //     else
-        //     {
-        //         ESP_LOGI(TAG, "weird error - is the device on battery or on mains power?");
-        //         minute_count = 61; // force the status update
-        //     }
-        // }
-        // if ((on_mains == 1 && on_mains_flag == 0) || (on_mains == 0 && on_mains_flag == 1)) // on_mains == mains power, on_mains_flag == battery power
-        // {
-        //     ESP_LOGI(TAG, "on_mains_flag: %d, status_onMains(): %d", on_mains_flag, on_mains);
-        //     on_mains_flag = !on_mains_flag; // update the on_mains_flag
-        //     minute_count = 61;              // force the status update
-        //     ESP_LOGI(TAG, "new on_mains_flag: %d", on_mains_flag);
-        // }
-
         mains_flag_evaluation();
-
-        // printf("waiting for message to be added to queue...\n");
-        // uint64_t dummy_buf;
-        // xQueuePeek(upload_queue, &dummy_buf, portMAX_DELAY);
-        // printf("!!! message added to queue\n");
 
         while (mqtt_connected_flag == 0)
         {
@@ -450,7 +276,6 @@ void Upload_Task_Code(void *pvParameters)
             free(jwt); // USE REALLOC RATHER ????????????????????????????????????
             time(&now);
             jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
-            // jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
             ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
             esp_err_t stop_ret = esp_mqtt_client_stop(client);
             if (stop_ret == ESP_OK)
@@ -507,13 +332,8 @@ void Upload_Task_Code(void *pvParameters)
             else // just carry on as normal
             {
                 need_to_upload_flag = true;
-                // telemetry_upload_pending_flag = 1; // to prevent deep sleep (on battery) if there is telemetry pending
             }
         }
-        // else
-        // {
-        //     telemetry_upload_pending_flag = 0;
-        // }
 
         if (telemetry_to_upload > 0 && need_to_upload_flag == true) // keep trying to send the message until successful. If we dont have this, and the send fails, our queue will be empty but the FRAM task wont send anything else because we havent sent an ack
         {
@@ -528,19 +348,11 @@ void Upload_Task_Code(void *pvParameters)
 
             printf("%s\n", telemetry_buf);
 
-            // vTaskDelay(5000 / portTICK_PERIOD_MS);
             // ============ MQTT ============ START
 
             int32_t upload_res = esp_mqtt_client_publish(client, telemetry_topic, telemetry_buf, 0, 1, 0);
 
             // ============ MQTT ============ END
-
-            // printf("upload_res: %d\n", upload_res);
-
-            if (upload_res == 0)
-            {
-                printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! UPLOAD_RES == 0\n");
-            }
 
             if (upload_res > 0) // surely message ID won't be 0 ??
             {
@@ -582,30 +394,8 @@ void Upload_Task_Code(void *pvParameters)
             float success = ((float)success_count / total) * 100;
             printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
         }
-        // else
-        // {
-        //     // if there is no telemetry to upload delay and look again after some time (give the other tasks CPU time)
-        //     // vTaskDelay(1000 / portTICK_PERIOD_MS);
-        //     vTaskDelay(200 / portTICK_PERIOD_MS);
-        // }
 
         // ================================= STATUS Upload stuff =================================
-
-        // Check if we are on mains or battery (and if there was a change from battery to mains)
-        // int8_t on_mains = status_onMains();
-        // if ((on_mains == 1 && on_mains_flag == 0) || (on_mains == 0 && on_mains_flag == 1)) // on_mains == mains power, on_mains_flag == battery power
-        // {
-        //     ESP_LOGI(TAG, "on_mains_flag: %d, status_onMains(): %d", on_mains_flag, on_mains);
-        //     on_mains_flag = !on_mains_flag; // update the on_mains_flag
-        //     minute_count = 61;              // force the status update
-        //     ESP_LOGI(TAG, "new on_mains_flag: %d", on_mains_flag);
-        // }
-        // else if (on_mains == 0 && on_mains_flag == 1)
-        // {
-        //     on_mains_flag = 0; // update the on_mains_flag
-        //     minute_count = 61; // force the status update
-        //     // enter_deep_sleep_flag = 1;
-        // }
 
         if (minute_count > CONFIG_STATUS_UPLOAD_INTERVAL_MIN)
         {
@@ -619,7 +409,6 @@ void Upload_Task_Code(void *pvParameters)
             }
 
             char status_message[350];
-            // status_message[0] = '\0';
 
             // UPLOAD STATUS HERE
             int32_t upload_res = 0;
@@ -660,15 +449,8 @@ void Upload_Task_Code(void *pvParameters)
             }
         }
 
-        // printf("waiting for message to be added to queue...\n");
         uint64_t dummy_buf;
         xQueuePeek(upload_queue, &dummy_buf, 30000 / portTICK_PERIOD_MS); // like a delay but the delay will end if there is a new message
-        // printf("!!! message added to queue\n");
-
-        // if (enter_deep_sleep_flag == 1 && software_update == 0 && telemetry_upload_pending == 0)
-        // {
-        //     // enter deep sleep
-        // }
     }
 }
 
@@ -748,16 +530,8 @@ void app_main(void)
         ESP_LOGE(TAG, "ack_queue == NULL");
     }
 
-    // Semaphore for rtc_alarm_flag
-    // rtc_alarm_flag_gatekeeper = xSemaphoreCreateBinary();
-    rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();
+    // Semaphore
     status_struct_gatekeeper = xSemaphoreCreateMutex();
-
-    if (rtc_alarm_flag_gatekeeper == NULL)
-    {
-        need_to_restart = true;
-        ESP_LOGE(TAG, "rtc_alarm_flag_gatekeeper == NULL");
-    }
     if (status_struct_gatekeeper == NULL)
     {
         need_to_restart = true;
@@ -785,24 +559,9 @@ void app_main(void)
     // Initial LED states
     if (on_mains_flag == 1) // only turn the LED on if device is on mains power
     {
-        // printf("turning led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
         gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
     }
     gpio_set_level(CONFIG_MQTT_LED_PIN, 0);
-
-    // status_evaluatePower();
-
-    // status_setBatteryChargeStatus(true);
-    // status_setOnMains(true);
-    // status_setBatteryVoltage(1234);
-
-    // status_printStatusStruct();
-
-    // Check if we are on battery or mains
-
-    // If mains, set that in status, carry on as normal
-
-    // If battery, set that in status, collect other necessary data (such as battery level), upload that, sleep
 
     // Time
     time_init();

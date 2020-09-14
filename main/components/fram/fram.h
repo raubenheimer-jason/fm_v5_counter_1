@@ -8,9 +8,13 @@
 #include <string.h> /* memset */
 #include "esp_log.h"
 
-// void fram_spi_init(const uint8_t mosi_pin, const uint8_t miso_pin, const uint8_t clk_pin, const uint8_t cs_pin, const uint8_t FRAM_HOST);
+#define INCLUDE_TEST 0
+
 void fram_spi_init();
+
+#if INCLUDE_TEST
 void test();
+#endif // INCLUDE_TEST
 
 uint32_t get_stored_messages_count();
 

@@ -20,6 +20,8 @@
 #include "nn.h"
 #include <string.h> /* memset */
 
+#define INCLUDE_P_IS_ZERO 0 // Unsed function which I dont want to delete yet
+
 /**
  * The size of sliding window, must be power of 2 (change this if you
  * want to use other window size, for example: 2 or 4)

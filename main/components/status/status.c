@@ -186,21 +186,6 @@ void status_evaluatePower(void)
         status_setBatteryChargeStatus(-1);
     }
 
-    // // Check if the device is on mains power or on battery
-    // uint32_t on_mains_pin_value = gpio_get_level(CONFIG_MAINS_SENSE_PIN);
-    // if (on_mains_pin_value == 0)
-    // {
-    //     status_setOnMains(0);
-    // }
-    // else if (on_mains_pin_value == 1)
-    // {
-    //     status_setOnMains(1);
-    // }
-    // else
-    // {
-    //     status_setOnMains(-1);
-    // }
-
     // Check if the device is on mains power or on battery
     int8_t on_mains = status_onMains();
     if (on_mains == 0)
@@ -241,14 +226,6 @@ void status_incrementWifiDisconnections(void)
     dev_status.wifi.disconnections++;
 }
 
-// /**
-//  * Clear the wifi disconnections count
-//  */
-// void status_clearWifiDisconnections(void)
-// {
-//     dev_status.wifi.disconnections = 0;
-// }
-
 // --------------------------------- END WIFI
 
 // =========================================================== MQTT
@@ -269,14 +246,6 @@ void status_incrementMqttUploadErrors(void)
     dev_status.mqtt.upload_errors++;
 }
 
-// /**
-//  * Clear the MQTT upload errors count
-//  */
-// void status_clearMqttUploadErrors(void)
-// {
-//     dev_status.mqtt.upload_errors = 0;
-// }
-
 /**
  * Increment the MQTT config_read_errors count
  * 
@@ -286,14 +255,6 @@ void status_incrementMqttConfigReadErrors(void)
 {
     dev_status.mqtt.config_read_errors++;
 }
-
-// /**
-//  * Clear the MQTT config_read_errors count
-//  */
-// void status_clearMqttConfigReadErrors(void)
-// {
-//     dev_status.mqtt.config_read_errors = 0;
-// }
 
 // --------------------------------- END MQTT
 
@@ -307,14 +268,6 @@ void status_incrementNtpErrors(void)
     dev_status.system.time.ntp_errors++;
 }
 
-// /**
-//  * Clear the NTP errors count
-//  */
-// void status_clearNtpErrors(void)
-// {
-//     dev_status.system.time.ntp_errors = 0;
-// }
-
 /**
  * Increment the system_time_update_errors count
  */
@@ -322,14 +275,6 @@ void status_incrementSysTimeUpdateErrors(void)
 {
     dev_status.system.time.system_time_update_errors++;
 }
-
-// /**
-//  * Clear the system_time_update_errors count
-//  */
-// void status_clearSysTimeUpdateErrors(void)
-// {
-//     dev_status.system.time.system_time_update_errors = 0;
-// }
 
 /**
  * Increment the rtc_set_time_errors count
@@ -339,14 +284,6 @@ void status_incrementRtcSetErrors(void)
     dev_status.system.time.rtc_set_time_errors++;
 }
 
-// /**
-//  * Clear the rtc_set_time_errors count
-//  */
-// void status_clearRtcSetErrors(void)
-// {
-//     dev_status.system.time.rtc_set_time_errors = 0;
-// }
-
 /**
  * Increment the rtc_read_errors count
  */
@@ -354,14 +291,6 @@ void status_incrementRtcReadErrors(void)
 {
     dev_status.system.time.rtc_read_errors++;
 }
-
-// /**
-//  * Clear the rtc_read_errors count
-//  */
-// void status_clearRtcReadErrors(void)
-// {
-//     dev_status.system.time.rtc_read_errors = 0;
-// }
 
 // --------------------------------- END TIME
 
@@ -375,14 +304,6 @@ void status_incrementFramReadErrors(void)
     dev_status.system.fram.read_errors++;
 }
 
-// /**
-//  * Clear the FRAM read_errors count
-//  */
-// void status_clearFramReadErrors(void)
-// {
-//     dev_status.system.fram.read_errors = 0;
-// }
-
 /**
  * Increment the FRAM write_errors count
  */
@@ -390,14 +311,6 @@ void status_incrementFramWriteErrors(void)
 {
     dev_status.system.fram.write_errors++;
 }
-
-// /**
-//  * Clear the FRAM write_errors count
-//  */
-// void status_clearFramWriteErrors(void)
-// {
-//     dev_status.system.fram.write_errors = 0;
-// }
 
 /**
  * Increment the FRAM alignment_errors count
@@ -408,14 +321,6 @@ void status_incrementFramAlignmentErrors(void)
 {
     dev_status.system.fram.alignment_errors++;
 }
-
-// /**
-//  * Clear the FRAM alignment_errors count
-//  */
-// void status_clearFramAlignmentErrors(void)
-// {
-//     dev_status.system.fram.alignment_errors = 0;
-// }
 
 /**
  * Set the FRAM high_water_mark
@@ -433,71 +338,13 @@ void status_framHighWaterMark(uint32_t num_messages)
     }
 }
 
-// /**
-//  * Clear the FRAM high_water_mark
-//  */
-// void status_clearframHighWaterMark(void)
-// {
-//     dev_status.system.fram.high_water_mark = 0;
-// }
-
 // --------------------------------- END FRAM
-
-// static size_t status_message_length()
-// {
-//     /*
-//     {
-//         "key":"value",
-//     }
-
-//     */
-//     const size_t syntax_len = 4 + 1 + 1; // """" + : + ,
-//     size_t msg_len = 0;
-
-//     msg_len += syntax_len + strlen("bv") + sizeof(dev_status.power.battery_voltage); // syntax + key length + value length
-// }
-
-/**
- * Allocate memory on the heap for the status message
- * 
- * MUST FREE MEMORY AFTER USE
- */
-// char *get_status_message(void)
 
 /**
  * Need a buffer with a minimum length of 318 bytes
  */
 esp_err_t get_status_message_json(char *status_buf)
 {
-    // char *status_tel = (char *)malloc(10);
-
-    // const size_t max_msg_len = 166;
-    // if (sizeof(*status_buf) < max_msg_len)
-    // {
-    //     ESP_LOGE(TAG, "sizeof(status_buf) < max_msg_len  (%d < %d)", sizeof(*status_buf), max_msg_len);
-    //     return ESP_FAIL;
-    // }
-    // else
-    // {
-    //     ESP_LOGI(TAG, "sizeof(status_buf) >= max_msg_len  (%d >= %d)", sizeof(*status_buf), max_msg_len);
-    // }
-
-    // int spinrtf_ret = sprintf(status_buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-    //                           dev_status.power.battery_voltage,
-    //                           dev_status.power.battery_charge_status,
-    //                           dev_status.power.on_mains,
-    //                           dev_status.wifi.disconnections,
-    //                           dev_status.wifi.rssi_low_mark,
-    //                           dev_status.mqtt.upload_errors,
-    //                           dev_status.mqtt.config_read_errors,
-    //                           dev_status.system.time.ntp_errors,
-    //                           dev_status.system.time.system_time_update_errors,
-    //                           dev_status.system.time.rtc_set_time_errors,
-    //                           dev_status.system.time.rtc_read_errors,
-    //                           dev_status.system.fram.read_errors,
-    //                           dev_status.system.fram.write_errors,
-    //                           dev_status.system.fram.alignment_errors,
-    //                           dev_status.system.fram.high_water_mark);
 
     int spinrtf_ret = sprintf(status_buf, "{\"bv\":%d,\"bcs\":%d,\"om\":%d,\"wd\":%d,\"wr\":%d,\"mue\":%d,\"mcre\":%d,\"ntpe\":%d,\"stue\":%d,\"rste\":%d,\"rre\":%d,\"fre\":%d,\"fwe\":%d,\"fae\":%d,\"fhw\":%d}",
                               dev_status.power.battery_voltage,                 // bv

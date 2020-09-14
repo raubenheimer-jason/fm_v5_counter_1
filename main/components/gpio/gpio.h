@@ -4,7 +4,6 @@
 #include "esp_event.h" // for xSemaphoreHandle (this also includes "freertos/FreeRTOS.h" which is needed for "freertos/queue.h")
 #include <stdint.h>
 #include "driver/gpio.h"
-// #include "driver/adc.h"
 #include "freertos/queue.h"
 
 #include "esp_log.h"

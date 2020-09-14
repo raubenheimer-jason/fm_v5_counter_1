@@ -11,16 +11,12 @@ static uint32_t count = 0;
 static const char *TAG = "GPIO";
 
 // Semaphore for count variable
-// static xSemaphoreHandle count_gatekeeper = 0;
-// static SemaphoreHandle_t count_gatekeeper = 0;
-// static SemaphoreHandle_t count_gatekeeper = NULL;
 static xSemaphoreHandle count_gatekeeper = NULL;
 
 esp_err_t gpio_initial_setup(void)
 {
     // initialise semaphore
     count_gatekeeper = xSemaphoreCreateMutex();
-    // count_gatekeeper = xSemaphoreCreateBinary();
 
     if (count_gatekeeper == NULL)
     {
@@ -50,23 +46,13 @@ esp_err_t gpio_initial_setup(void)
         return led_init_ret;
     }
 
-    // if (on_mains_flag == 1) // only turn the LED on if device is on mains power
-    // {
-    //     printf("turning led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
-    //     gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
-    // }
-    // gpio_set_level(CONFIG_MQTT_LED_PIN, 0);
-
     ESP_LOGI(TAG, "GPIO init done");
     return ESP_OK;
 }
 
 static void IRAM_ATTR rtc_alarm_isr(void *arg)
 {
-    // if (xSemaphoreTake(count_gatekeeper, 200))
     if (xSemaphoreTake(count_gatekeeper, 200) == pdTRUE)
-    // if (xSemaphoreTakeFromISR(count_gatekeeper, 200) == pdTRUE)
-    // if (xSemaphoreTakeFromISR(count_gatekeeper, NULL) == pdTRUE)
     {
         // store count value in local variable
         uint32_t local_count = count;
@@ -76,18 +62,6 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
 
         // release count
         xSemaphoreGive(count_gatekeeper);
-        // xSemaphoreGiveFromISR(count_gatekeeper, NULL);
-
-        // if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100)) // old
-        // if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
-        // if (xSemaphoreTakeFromISR(rtc_alarm_flag_gatekeeper, 100) == pdTRUE) // old
-        // if (xSemaphoreTakeFromISR(rtc_alarm_flag_gatekeeper, NULL) == pdTRUE) // old
-        // {
-            // rtc_alarm_flag = true;
-            // xSemaphoreGive(rtc_alarm_flag_gatekeeper);
-            // xSemaphoreGiveFromISR(rtc_alarm_flag_gatekeeper, NULL);
-        // }
-        // send count and time data to Fram Task
 
         // get time from esp32
         time_t unix_now;
@@ -103,14 +77,10 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
 
 static void IRAM_ATTR counter_isr(void *arg)
 {
-    // if (xSemaphoreTake(count_gatekeeper, 200))
     if (xSemaphoreTake(count_gatekeeper, 200) == pdTRUE)
-    // if (xSemaphoreTakeFromISR(count_gatekeeper, 200) == pdTRUE)
-    // if (xSemaphoreTakeFromISR(count_gatekeeper, NULL) == pdTRUE)
     {
         count++;
         xSemaphoreGive(count_gatekeeper); // release count
-        // xSemaphoreGiveFromISR(count_gatekeeper, NULL); // release count
     }
 }
 
@@ -127,8 +97,6 @@ static esp_err_t gpio_interrupt_init(void)
         .pull_down_en = 0,
         .intr_type = GPIO_INTR_NEGEDGE,
     };
-
-    // esp_err_t ret = ESP_OK;
 
     esp_err_t config_ret = gpio_config(&gpio_interrupt_pin_config);
     if (config_ret != ESP_OK)

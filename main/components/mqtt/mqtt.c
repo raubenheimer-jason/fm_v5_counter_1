@@ -2,8 +2,6 @@
 
 char device_id[20];
 
-// int8_t use_backup_certificate;
-
 static const char *TAG = "MQTT";
 
 int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
@@ -38,7 +36,6 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
         if (on_mains_flag == 1) // only turn LED on if on mains power
         {
-            // printf("turning mqtt led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
             gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
         }
 
@@ -69,7 +66,6 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     case MQTT_EVENT_PUBLISHED:
         if (on_mains_flag == 1) // only turn LED on if on mains power
         {
-            // printf("turning mqtt led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
             gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
         }
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
@@ -90,15 +86,6 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
             if (event->error_handle->esp_tls_stack_err == 0x2700)
             {
                 ESP_LOGI(TAG, "CHANGE CERTIGICATES ????????????????????");
-
-                // if (use_backup_certificate == 0)
-                // {
-                //     use_backup_certificate = 1;
-                // }
-                // else if (use_backup_certificate = 1)
-                // {
-                //     use_backup_certificate = 0;
-                // }
             }
         }
         else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED)

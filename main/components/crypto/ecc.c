@@ -69,6 +69,8 @@ p_copy(point_t *P0, point_t *P1)
   NN_Assign(P0->x, P1->x, NUMWORDS);
   NN_Assign(P0->y, P1->y, NUMWORDS);
 }
+
+#if INCLUDE_P_IS_ZERO
 /*---------------------------------------------------------------------------*/
 /**
  * \brief             Test whether x and y of P0 is all zero
@@ -87,6 +89,8 @@ p_iszero(point_t *P0)
   }
   return result;
 }
+#endif // INCLUDE_P_IS_ZERO
+
 /*---------------------------------------------------------------------------*/
 /**
  * \brief             Test whether points P1 and P2 are equal

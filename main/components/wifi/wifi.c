@@ -24,7 +24,6 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     {
         if (on_mains_flag == 1) // only turn LED on if on mains power
         {
-            // printf("turning wifi led on ---------------------------------------------------------------------------------------------------------------------------------------\n");
             gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
         }
 
@@ -127,12 +126,4 @@ void wifi_init_sta(void)
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
-
-    /* The event will not be processed after unregister */
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
-
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_sta_disconnect));
-
-    // vEventGroupDelete(s_wifi_event_group);
 }

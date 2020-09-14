@@ -194,7 +194,7 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
 
     char *enc_signature = b64_encode(signature, 64);
 
-    size_t enc_sig_len = strlen(enc_signature);
+    // size_t enc_sig_len = strlen(enc_signature);
     // printf("%s  %d\n\n", enc_signature, enc_sig_len);
 
     size_t comp_len = strlen(header_payload_base64);

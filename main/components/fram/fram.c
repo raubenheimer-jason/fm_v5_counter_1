@@ -2,9 +2,6 @@
 
 #include "fram.h"
 
-// #define __STDC_FORMAT_MACROS
-// #include <inttypes.h>
-
 // --------------------------- FRAM CONFIG ---------------------------
 // pins
 const uint8_t SPI_MOSI_PIN = 36;
@@ -84,7 +81,6 @@ void fram_spi_init()
     spi_device_interface_config_t devcfg = {
         .command_bits = 8,
         .address_bits = 24,
-        // .address_bits = 32,
         .mode = 0,
         .duty_cycle_pos = 0,
         .cs_ena_pretrans = 1,
@@ -108,6 +104,7 @@ void display_top_bottom()
     printf("top = %d, bottom = %d\n", top, bottom);
 }
 
+#if INCLUDE_TEST
 void test()
 {
     /*
@@ -141,6 +138,7 @@ void test()
     printf("read byte 0:\t" BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(test_byte));
     */
 }
+#endif // INCLUDE_TEST
 
 /**
  * Writes telemetry to memory (at the top)

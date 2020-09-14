@@ -10,8 +10,6 @@
 
 #include "time.h"
 
-// #include "../../config.h"
-
 #define INCLUDE_RTC_TEST 0     // dont include the rtc test function unless we need to use it (just dont want to delete it)
 #define INCLUDE_UINT8_TO_BCD 0 // dont include unless we need to use it (just dont want to delete it)  (uint8_to_bcd)
 
@@ -27,9 +25,7 @@
         (byte & 0x01 ? '1' : '0')
 
 // Non-static prototypes
-// esp_err_t rtc_set_date_time(uint32_t *unix);
 esp_err_t rtc_set_date_time(const time_t *unix);
-// esp_err_t rtc_set_date_time(uint32_t unix);
 uint32_t rtc_get_unix(); //, uint32_t *unix)
 esp_err_t rtc_begin(uint8_t scl_pin, uint8_t sda_pin);
 
@@ -42,7 +38,5 @@ void rtc_print_control_register(void);
 
 void rtc_config_alarm();
 void rtc_clear_alarm();
-
-// uint8_t read_reg_2(uint8_t reg_addr);
 
 #endif // _RTC_H_
