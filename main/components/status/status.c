@@ -5,6 +5,8 @@ static void status_setOnMains(int8_t mains);
 static void status_setBatteryChargeStatus(int8_t status);
 static void status_setBatteryVoltage(uint32_t voltage);
 
+static const char *TAG = "STATUS";
+
 typedef struct power_status
 {
     uint32_t battery_voltage; // Battery voltage in mV (voltage divider already factored in)
@@ -20,6 +22,7 @@ typedef struct wifi_status
 
 typedef struct mqtt_status
 {
+    uint32_t upload_success;
     uint32_t upload_errors;
     uint32_t config_read_errors;
 } mqtt_status;
@@ -65,6 +68,7 @@ static device_status dev_status = {
         .rssi_low_mark = 0,
     },
     .mqtt = {
+        .upload_success = 0,
         .upload_errors = 0,
         .config_read_errors = 0,
     },
@@ -250,6 +254,14 @@ void status_incrementWifiDisconnections(void)
 // =========================================================== MQTT
 
 /**
+ * Increment the MQTT upload success count
+ */
+void status_incrementMqttUploadSuccess(void)
+{
+    dev_status.mqtt.upload_success++;
+}
+
+/**
  * Increment the MQTT upload errors count
  */
 void status_incrementMqttUploadErrors(void)
@@ -431,14 +443,87 @@ void status_framHighWaterMark(uint32_t num_messages)
 
 // --------------------------------- END FRAM
 
+// static size_t status_message_length()
+// {
+//     /*
+//     {
+//         "key":"value",
+//     }
+
+//     */
+//     const size_t syntax_len = 4 + 1 + 1; // """" + : + ,
+//     size_t msg_len = 0;
+
+//     msg_len += syntax_len + strlen("bv") + sizeof(dev_status.power.battery_voltage); // syntax + key length + value length
+// }
+
 /**
  * Allocate memory on the heap for the status message
  * 
  * MUST FREE MEMORY AFTER USE
  */
 // char *get_status_message(void)
-// {
-// }
+
+/**
+ * Need a buffer with a minimum length of 318 bytes
+ */
+esp_err_t get_status_message_json(char *status_buf)
+{
+    // char *status_tel = (char *)malloc(10);
+
+    // const size_t max_msg_len = 166;
+    // if (sizeof(*status_buf) < max_msg_len)
+    // {
+    //     ESP_LOGE(TAG, "sizeof(status_buf) < max_msg_len  (%d < %d)", sizeof(*status_buf), max_msg_len);
+    //     return ESP_FAIL;
+    // }
+    // else
+    // {
+    //     ESP_LOGI(TAG, "sizeof(status_buf) >= max_msg_len  (%d >= %d)", sizeof(*status_buf), max_msg_len);
+    // }
+
+    // int spinrtf_ret = sprintf(status_buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+    //                           dev_status.power.battery_voltage,
+    //                           dev_status.power.battery_charge_status,
+    //                           dev_status.power.on_mains,
+    //                           dev_status.wifi.disconnections,
+    //                           dev_status.wifi.rssi_low_mark,
+    //                           dev_status.mqtt.upload_errors,
+    //                           dev_status.mqtt.config_read_errors,
+    //                           dev_status.system.time.ntp_errors,
+    //                           dev_status.system.time.system_time_update_errors,
+    //                           dev_status.system.time.rtc_set_time_errors,
+    //                           dev_status.system.time.rtc_read_errors,
+    //                           dev_status.system.fram.read_errors,
+    //                           dev_status.system.fram.write_errors,
+    //                           dev_status.system.fram.alignment_errors,
+    //                           dev_status.system.fram.high_water_mark);
+
+    int spinrtf_ret = sprintf(status_buf, "{\"bv\":%d,\"bcs\":%d,\"om\":%d,\"wd\":%d,\"wr\":%d,\"mue\":%d,\"mcre\":%d,\"ntpe\":%d,\"stue\":%d,\"rste\":%d,\"rre\":%d,\"fre\":%d,\"fwe\":%d,\"fae\":%d,\"fhw\":%d}",
+                              dev_status.power.battery_voltage,                 // bv
+                              dev_status.power.battery_charge_status,           // bcs
+                              dev_status.power.on_mains,                        // om
+                              dev_status.wifi.disconnections,                   // wd
+                              dev_status.wifi.rssi_low_mark,                    // wr
+                              dev_status.mqtt.upload_errors,                    // mue
+                              dev_status.mqtt.config_read_errors,               // mcre
+                              dev_status.system.time.ntp_errors,                // ntpe
+                              dev_status.system.time.system_time_update_errors, // stue
+                              dev_status.system.time.rtc_set_time_errors,       // rste
+                              dev_status.system.time.rtc_read_errors,           // rre
+                              dev_status.system.fram.read_errors,               // fre
+                              dev_status.system.fram.write_errors,              // fwe
+                              dev_status.system.fram.alignment_errors,          // fae
+                              dev_status.system.fram.high_water_mark);          // fhw
+
+    if (spinrtf_ret < 0)
+    {
+        ESP_LOGE(TAG, "spinrtf_ret < 0");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
 
 /**
  * Prints the status message to the console
@@ -486,6 +571,7 @@ void status_resetStruct(void)
     dev_status.wifi.disconnections = 0;
 
     // mqtt
+    dev_status.mqtt.upload_success = 0;
     dev_status.mqtt.upload_errors = 0;
     dev_status.mqtt.config_read_errors = 0;
 

@@ -17,7 +17,7 @@
 #define ESP_INTR_FLAG_DEFAULT 0
 
 // Prototypes
-void gpio_initial_setup(void);
+esp_err_t gpio_initial_setup(void);
 
 // Declerations
 extern int8_t on_mains_flag; // Don't have any LED's on when on battery power

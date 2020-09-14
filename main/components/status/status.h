@@ -6,6 +6,8 @@
 // #include <stddef.h>
 #include "esp_system.h"
 
+#include "esp_log.h"
+
 #include "driver/gpio.h"
 #include "driver/adc.h"
 // #include "esp_event.h" // for vTaskDelay()
@@ -13,6 +15,7 @@
 // Prototypes
 void status_resetStruct(void);
 // char *get_status_message(void);
+esp_err_t get_status_message_json(char *status_buf);
 void status_printStatusStruct(void);
 
 // power
@@ -23,7 +26,8 @@ void status_setRssiLowWaterMark(int8_t rssi);  // added
 void status_incrementWifiDisconnections(void); // added
 // void status_clearWifiDisconnections(void);
 // mqtt
-void status_incrementMqttUploadErrors(void); // added
+void status_incrementMqttUploadSuccess(void); // added
+void status_incrementMqttUploadErrors(void);  // added
 // void status_clearMqttUploadErrors(void);
 void status_incrementMqttConfigReadErrors(void);
 // void status_clearMqttConfigReadErrors(void);

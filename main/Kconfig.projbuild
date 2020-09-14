@@ -106,6 +106,10 @@ menu "Example Configuration"
         string
         default "counter-1"
 
+    config STATUS_SUBFOLDER
+        string
+        default "status-telemetry-1"
+
     config GCP_URI
         string
         default "mqtts://mqtt.2030.ltsapis.goog:8883"

@@ -163,6 +163,7 @@ CONFIG_JWT_EXP=3600
 CONFIG_GCP_PROJECT_ID="fm-development-1"
 CONFIG_GCP_LOCATION="us-central1"
 CONFIG_GCP_REGISTRY="counter-1"
+CONFIG_STATUS_SUBFOLDER="status-telemetry-1"
 CONFIG_GCP_URI="mqtts://mqtt.2030.ltsapis.goog:8883"
 CONFIG_GCP_HOST="mqtt.2030.ltsapis.goog"
 CONFIG_GCP_PORT=8883

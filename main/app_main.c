@@ -47,7 +47,9 @@
 static const char *TAG = "APP_MAIN";
 
 // Semaphore for rtc_alarm_flag variable
-xSemaphoreHandle rtc_alarm_flag_gatekeeper = 0;
+// SemaphoreHandle_t rtc_alarm_flag_gatekeeper = 0; // binary type because of ISR
+xSemaphoreHandle rtc_alarm_flag_gatekeeper = NULL;
+xSemaphoreHandle status_struct_gatekeeper = NULL;
 
 xQueueHandle fram_store_queue = NULL;
 static xQueueHandle upload_queue = NULL;
@@ -95,7 +97,7 @@ void Fram_Task_Code(void *pvParameters)
 
         if (rtc_alarm_flag == true)
         {
-            if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100))
+            if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
             {
                 rtc_alarm_flag = false;
                 xSemaphoreGive(rtc_alarm_flag_gatekeeper);
@@ -115,12 +117,20 @@ void Fram_Task_Code(void *pvParameters)
             if (write_telemetry(telemetry_to_store) == false)
             {
                 ESP_LOGE(TAG, "error writing telemetry");
-                status_incrementFramWriteErrors();
+                if (xSemaphoreTake(status_struct_gatekeeper, 100) == pdTRUE)
+                {
+                    status_incrementFramWriteErrors();
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
             }
             else
             {
                 ESP_LOGD(TAG, "telemetry successfully stored in FRAM");
-                status_framHighWaterMark(get_stored_messages_count());
+                if (xSemaphoreTake(status_struct_gatekeeper, 100) == pdTRUE)
+                {
+                    status_framHighWaterMark(get_stored_messages_count());
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
             }
         }
 
@@ -159,7 +169,11 @@ void Fram_Task_Code(void *pvParameters)
             else
             {
                 ESP_LOGE(TAG, "error in data read from fram");
-                status_incrementFramReadErrors();
+                if (xSemaphoreTake(status_struct_gatekeeper, 100))
+                {
+                    status_incrementFramReadErrors();
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
             }
         }
 
@@ -238,6 +252,8 @@ void Upload_Task_Code(void *pvParameters)
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+    // esp_mqtt_client_stop(client); // might prevent errors where the client is connected and there is a restart?????
+    esp_mqtt_client_disconnect(client); // might prevent errors where the client is connected and there is a restart?????
     esp_mqtt_client_start(client);
 
     // Won't need to free this as it's used throughout the life of the program
@@ -307,12 +323,20 @@ void Upload_Task_Code(void *pvParameters)
             if (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT)
             {
                 ESP_LOGE(TAG, "WiFi not connected (ESP_ERR_WIFI_NOT_CONNECT)");
-                status_incrementWifiDisconnections();
+                if (xSemaphoreTake(status_struct_gatekeeper, 100))
+                {
+                    status_incrementWifiDisconnections();
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
                 vTaskDelay(5000 / portTICK_PERIOD_MS);
             }
             else
             {
-                status_setRssiLowWaterMark(ap_info.rssi);
+                if (xSemaphoreTake(status_struct_gatekeeper, 100))
+                {
+                    status_setRssiLowWaterMark(ap_info.rssi);
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
             }
 
         } while (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT);
@@ -418,6 +442,11 @@ void Upload_Task_Code(void *pvParameters)
             if (upload_res > 0) // surely message ID won't be 0 ??
             {
                 success_count++;
+                if (xSemaphoreTake(status_struct_gatekeeper, 100))
+                {
+                    status_incrementMqttUploadSuccess();
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
                 ESP_LOGI(TAG, "-->> PUBLISH SUCCESS!!!!");
 
                 previously_uploaded_telemetry = telemetry_to_upload;
@@ -438,7 +467,11 @@ void Upload_Task_Code(void *pvParameters)
             {
                 error_count++;
                 ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!!");
-                status_incrementMqttUploadErrors();
+                if (xSemaphoreTake(status_struct_gatekeeper, 100))
+                {
+                    status_incrementMqttUploadErrors();
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
 
@@ -475,18 +508,44 @@ void Upload_Task_Code(void *pvParameters)
             ESP_LOGI(TAG, "***------------------------------------ UPLOAD STATUS ------------------------------------***");
 
             // Evaluate latest power status before upload
-            status_evaluatePower();
+            if (xSemaphoreTake(status_struct_gatekeeper, 100))
+            {
+                status_evaluatePower();
+                xSemaphoreGive(status_struct_gatekeeper);
+            }
+
+            char status_message[350];
+            // status_message[0] = '\0';
 
             // UPLOAD STATUS HERE
-            int32_t upload_res = 1;
-            status_printStatusStruct();
-            // int32_t upload_res = esp_mqtt_client_publish(client, telemetry_topic, telemetry_buf, 0, 1, 0);
+            int32_t upload_res = 0;
+            if (xSemaphoreTake(status_struct_gatekeeper, 100))
+            {
+                status_printStatusStruct();
+                get_status_message_json(status_message);
+
+                xSemaphoreGive(status_struct_gatekeeper);
+            }
+            printf("status message:\n");
+            printf("%s\n", status_message);
+
+            char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
+            strcpy(status_telemetry_topic, telemetry_topic);
+            strcat(status_telemetry_topic, "/");
+            strcat(status_telemetry_topic, CONFIG_STATUS_SUBFOLDER);
+            printf("status_telemetry_topic: %s\n", status_telemetry_topic);
+            upload_res = esp_mqtt_client_publish(client, status_telemetry_topic, status_message, 0, 1, 0); // status-telemetry-1
 
             // IF upload was successful
             if (upload_res > 0)
             {
-                // reset status struct
-                status_resetStruct();
+                ESP_LOGI(TAG, "**************** STATUS PUBLISH SUCCESS!!!! ****************");
+                if (xSemaphoreTake(status_struct_gatekeeper, 100))
+                {
+                    // reset status struct
+                    status_resetStruct();
+                    xSemaphoreGive(status_struct_gatekeeper);
+                }
                 minute_count = 1; // (or is it 0?? --> make sure to initialise the variable to the correct one)
             }
         }
@@ -557,31 +616,53 @@ void app_main(void)
     ack_queue = xQueueCreate(1, sizeof(uint64_t));
 
     // Check queues
-    bool queue_create_failed = false;
+    bool need_to_restart = false;
     if (fram_store_queue == NULL)
     {
+        need_to_restart = true;
         ESP_LOGE(TAG, "fram_store_queue == NULL");
     }
     if (upload_queue == NULL)
     {
+        need_to_restart = true;
         ESP_LOGE(TAG, "upload_queue == NULL");
     }
     if (ack_queue == NULL)
     {
+        need_to_restart = true;
         ESP_LOGE(TAG, "ack_queue == NULL");
     }
-    if (queue_create_failed == true)
+
+    // Semaphore for rtc_alarm_flag
+    // rtc_alarm_flag_gatekeeper = xSemaphoreCreateBinary();
+    rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();
+    status_struct_gatekeeper = xSemaphoreCreateMutex();
+
+    if (rtc_alarm_flag_gatekeeper == NULL)
+    {
+        need_to_restart = true;
+        ESP_LOGE(TAG, "rtc_alarm_flag_gatekeeper == NULL");
+    }
+    if (status_struct_gatekeeper == NULL)
+    {
+        need_to_restart = true;
+        ESP_LOGE(TAG, "status_struct_gatekeeper == NULL");
+    }
+
+    // GPIO
+    esp_err_t gpio_setup_ret = gpio_initial_setup();
+    if (gpio_setup_ret != ESP_OK)
+    {
+        need_to_restart = true;
+        ESP_LOGE(TAG, "gpio_setup_ret != ESP_OK");
+    }
+
+    if (need_to_restart == true)
     {
         ESP_LOGE(TAG, "restarting in 10s");
         vTaskDelay(10000 / portTICK_PERIOD_MS);
         esp_restart();
     }
-
-    // Semaphore for rtc_alarm_flag
-    rtc_alarm_flag_gatekeeper = xSemaphoreCreateMutex();
-
-    // GPIO
-    gpio_initial_setup();
 
     on_mains_flag = -1; // force the evaluation
     mains_flag_evaluation();
