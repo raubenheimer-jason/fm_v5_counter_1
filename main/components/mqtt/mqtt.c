@@ -1,5 +1,8 @@
 #include "mqtt.h"
 
+static char *getValueFromJson(const char *json_str, const uint32_t json_str_len, const char *key);
+static void firmware_update_check(const char *config_data, const int config_data_len);
+
 char device_id[20];
 
 static const char *TAG = "MQTT";
@@ -74,6 +77,8 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
+
+        firmware_update_check(event->data, event->data_len);
 
         break;
     case MQTT_EVENT_ERROR:
@@ -163,3 +168,240 @@ esp_err_t get_device_id(char device_id[])
 
     return ESP_OK;
 }
+
+// ================================================================================== SOFTWARRE UPDATE
+
+static void firmware_update_check(const char *config_data, const int config_data_len)
+{
+    ESP_LOGI(TAG, "checking firmware version for update");
+    char *config_firmware_version = getValueFromJson(config_data, config_data_len, "firmware_version");
+
+    if (config_firmware_version != NULL)
+    {
+        printf("config_firmware_version: %s (length: %d)\n", config_firmware_version, strlen(config_firmware_version));
+
+        printf("CONFIG_FIRMWARE_VERSION: %s\n", CONFIG_FIRMWARE_VERSION);
+
+        if (strcmp(config_firmware_version, CONFIG_FIRMWARE_VERSION) != 0)
+        {
+            printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIRMWARE UPDATE AVALIABLE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+        }
+        else
+        {
+            ESP_LOGI(TAG, "no new firmware, device is up to date");
+        }
+    }
+    else
+    {
+        ESP_LOGW(TAG, "config doesn't contain firmware information...\n");
+    }
+
+    free(config_firmware_version);
+}
+
+/** Returns a pointer to the value from the JSON
+ *  
+ * MUST FREE POINTER AFTER USE
+ */
+static char *getValueFromJson(const char *json_str, const uint32_t json_str_len, const char *key)
+{
+    // we don't know how big the value will be but it can't be bigger than this
+    // char *value = (char *)malloc(strlen(json_str)); // message base 64 ??
+    char *value = (char *)malloc(json_str_len); // message base 64 ??
+    value[0] = '\0';
+
+    // printf("json_str: %s\n", json_str);
+
+    uint32_t s_index = 0;
+
+    // for (uint32_t i = 0; i < strlen(json_str); i++)
+    for (uint32_t i = 0; i < json_str_len; i++)
+    {
+        // if (i < (strlen(json_str) - strlen(key)))
+        if (i < (json_str_len - strlen(key)))
+        {
+            // This section gets through the "key"
+            bool done = true;
+            for (uint32_t j = 0; j < strlen(key); j++)
+            {
+                if (key[j] == json_str[i + j])
+                {
+                    s_index = i + j;
+                }
+                else
+                {
+                    done = false;
+                    break;
+                }
+            }
+            // This section reads the value after the key has been found
+            if (done == true)
+            {
+                uint32_t q_count = 0;
+                // for (uint32_t k = s_index + 1; k < strlen(json_str); k++)
+                for (uint32_t k = s_index + 1; k < json_str_len; k++)
+                {
+                    if (json_str[k] == '"')
+                    {
+                        q_count++;
+                    }
+
+                    if (q_count >= 2)
+                    {
+                        uint32_t count = 1;
+
+                        // Read each character of the value until the last " (we do NOT cater for \")
+                        while (json_str[k + count] != '"')
+                        {
+                            value[count - 1] = json_str[k + count];
+                            printf("json_str[%d + %d]: %c\n", k, count, json_str[k + count]);
+                            printf("value[(count = %d) - 1]: %c\n", count, value[count - 1]);
+                            value[count] = '\0'; // make surre to keep null value at end of string (dont put it after the count++)
+                            count++;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < strlen(value); i++)
+    {
+        printf("%d  %c\n", i, value[i]);
+    }
+
+    if (strlen(value) > 0)
+    {
+        printf("strlen(value) > 0 (%d)\n", strlen(value));
+        // reallocate memory to just the size of the value
+        value = (char *)realloc(value, strlen(value));
+
+        return value;
+    }
+    else
+    {
+        printf("strlen(value): %d\n", strlen(value));
+        return NULL;
+    }
+
+    // return value;
+}
+
+/**
+ * Download new firmware.
+ * 
+ * Downloads the new firmware from the specified URL.
+ * 
+ * @param file_url: Url (including token) of the location of the firmware.bin file in cloud storage
+ * @param certificate: Public certificate for cloud storage
+ * 
+ * @return boolean: True if download was successful, false otherwise
+ */
+/*
+bool CloudIoTCoreHttp::firmware_update(std::string file_url, const char *certificate)
+{
+    // Serial.print("[UPDATE] downloading firmware update");
+    ESP_LOGI(TAG, "downloading firmware update");
+
+    esp_http_client_config_t config{};
+    config.url = file_url.c_str();
+    config.cert_pem = certificate;
+
+    esp_err_t ret = esp_https_ota(&config);
+
+    if (ret == ESP_OK)
+    {
+        // Serial.println("[UPDATE] successfully downloaded new firmware");
+        ESP_LOGI(TAG, "successfully downloaded new firmware");
+        return true;
+    }
+    else
+    {
+        // Serial.println("[UPDATE] could not downloaded new firmware");
+        ESP_LOGE(TAG, "could not downloaded new firmware");
+        return false;
+    }
+}
+
+
+bool CloudIoTCoreHttp::update_avaliable(const std::string current_firmware_version, const char *update_certificate)
+{
+    latest_config = getConfig().c_str();
+    std::string binaryData_b64{getValueFromJson(latest_config, "binaryData")}; // message base 64
+    std::string binaryData = base64_decode(binaryData_b64);
+    std::string latest_config_firmware_version{getValueFromJson(binaryData, "firmware_version")};
+
+    if (current_firmware_version != latest_config_firmware_version)
+    {
+        // std::string to_print{current_firmware_version};
+        // to_print += " != ";
+        // to_print += latest_config_firmware_version;
+        // Serial.println(to_print.c_str());
+
+        ESP_LOGI(TAG, "%s != %s", current_firmware_version, latest_config_firmware_version);
+
+        std::string file_url{getValueFromJson(binaryData, "file_url")};
+
+        return firmware_update(file_url, update_certificate);
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+std::string getValueFromJson(std::string json_str, std::string key)
+{
+    std::string value{}; // message base 64
+
+    int s_index{};
+
+    for (int i{}; i < json_str.length(); i++)
+    {
+        if (i < (json_str.length() - key.length()))
+        {
+            bool done{true};
+            for (int j{}; j < key.length(); j++)
+            {
+                if (key[j] == json_str[i + j])
+                {
+                    s_index = i + j;
+                }
+                else
+                {
+                    done = false;
+                    break;
+                }
+            }
+            if (done == true)
+            {
+                int q_count{};
+                for (int k{s_index + 1}; k < json_str.length(); k++)
+                {
+                    if (json_str[k] == '"')
+                    {
+                        q_count++;
+                    }
+
+                    if (q_count >= 2)
+                    {
+                        int count{1};
+
+                        while (json_str[k + count] != '"')
+                        {
+                            value += json_str[k + count];
+                            count++;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return value;
+}
+
+*/

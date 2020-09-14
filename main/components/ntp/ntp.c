@@ -25,7 +25,7 @@ void time_sync_notification_cb(struct timeval *tv)
 
     printf("unix from system time: %d\n", (uint32_t)unix_now);
 
-    const uint8_t time_tolerance = 1; // seconds (actually 2 because it isn't = to)
+    const uint8_t time_tolerance = 2; // seconds (actually 3 because it isn't = to) ??
 
     if (rtc_unix < ((uint32_t)unix_now - time_tolerance) || rtc_unix > ((uint32_t)unix_now + time_tolerance))
     {

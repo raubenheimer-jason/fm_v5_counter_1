@@ -1,5 +1,9 @@
 menu "Example Configuration"
 
+    config FIRMWARE_VERSION
+        string
+        default "1"
+
 # WIFI ---------------------------------------------- WIFI
     config WIFI_SSID
         string
