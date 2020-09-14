@@ -55,7 +55,7 @@ xQueueHandle fram_store_queue = NULL;
 static xQueueHandle upload_queue = NULL;
 static xQueueHandle ack_queue = NULL;
 
-bool rtc_alarm_flag = false;
+// bool rtc_alarm_flag = false;
 
 bool restart_required_flag = false;
 
@@ -63,12 +63,12 @@ bool restart_required_flag = false;
 
 char device_id[20];
 
-// const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
+const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 
 extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
 extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
 
-extern const char device_private_key[] asm("_binary_device_private_key_pem_start");
+// extern const char device_private_key[] asm("_binary_device_private_key_pem_start");
 
 // ------------------------------------- END MQTT
 
@@ -94,25 +94,31 @@ void set_restart_required_flag()
 
 void Fram_Task_Code(void *pvParameters)
 {
+    // int8_t received_telemetry = 0; // 0 = no telemetry received, 1 = received telemetry
+
+    xTicksToWait s = 5;
+
     for (;;)
     {
 
-        if (rtc_alarm_flag == true)
-        {
-            if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
-            {
-                rtc_alarm_flag = false;
-                xSemaphoreGive(rtc_alarm_flag_gatekeeper);
-                ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
-                rtc_clear_alarm();
-            }
-            minute_count++;
-            ESP_LOGD(TAG, "minutes passed: %d", minute_count);
-        }
+        // if (rtc_alarm_flag == true)
+        // {
+        //     if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
+        //     {
+        //         rtc_alarm_flag = false;
+        //         xSemaphoreGive(rtc_alarm_flag_gatekeeper);
+        //         ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
+        //         rtc_clear_alarm();
+        //     }
+        //     minute_count++;
+        //     ESP_LOGD(TAG, "minutes passed: %d", minute_count);
+        // }
 
         uint64_t telemetry_to_store = 0;
-        if (xQueueReceive(fram_store_queue, &telemetry_to_store, 0))
+        // if (xQueueReceive(fram_store_queue, &telemetry_to_store, 0))
+        if (xQueueReceive(fram_store_queue, &telemetry_to_store, 1000 / portTICK_PERIOD_MS))
         {
+            ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
             ESP_LOGD(TAG, "received telemetry_to_store");
 
             // Store telemetry in FRAM
@@ -134,10 +140,15 @@ void Fram_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
             }
+
+            rtc_clear_alarm();
+            minute_count++;
+            ESP_LOGD(TAG, "minutes passed: %d", minute_count);
         }
 
         uint64_t telemetry_to_delete = 0;
         if (xQueueReceive(ack_queue, &telemetry_to_delete, 0))
+        // if (xQueueReceive(ack_queue, &telemetry_to_delete, 500 / portTICK_PERIOD_MS))
         {
             if (telemetry_to_delete > CONFIG_LAST_KNOWN_UNIX)
             {
@@ -178,8 +189,13 @@ void Fram_Task_Code(void *pvParameters)
                 }
             }
         }
+        // else
+        // {
+        //     vTaskDelay(200 / portTICK_PERIOD_MS);
+        // }
 
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        // vTaskDelay(1000 / portTICK_PERIOD_MS); // was 5000
+        // vTaskDelay(200 / portTICK_PERIOD_MS); // was 5000
     }
 }
 
@@ -212,6 +228,49 @@ void mains_flag_evaluation(void)
     }
 }
 
+// void start_mqtt_client(const char *jwt, char *client_id, int8_t use_backup_certificate)
+// {
+//     char *certificate_in_use;
+//     if (use_backup_certificate == 0)
+//     {
+//         ESP_LOGI(TAG, "use primary certificate");
+//         certificate_in_use = mqtt_google_primary_pem;
+//     }
+//     else if (use_backup_certificate == 1)
+//     {
+//         ESP_LOGI(TAG, "use backup certificate");
+//         certificate_in_use = mqtt_google_backup_pem;
+//     }
+//     else
+//     {
+//         ESP_LOGE(TAG, "what certificate are we meant to use?? just use primary");
+//         certificate_in_use = mqtt_google_primary_pem;
+//     }
+
+//     esp_mqtt_client_config_t mqtt_cfg = {
+//         .uri = CONFIG_GCP_URI,   // "mqtts://mqtt.2030.ltsapis.goog:8883"
+//         .host = CONFIG_GCP_HOST, // "mqtt.2030.ltsapis.goog"
+//         .port = CONFIG_GCP_PORT, // 8883
+//         .username = "unused",
+//         .password = jwt,
+//         .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
+//         // .cert_pem = (const char *)mqtt_google_primary_pem,
+//         // .cert_pem = (const char *)mqtt_google_backup_pem,
+//         .cert_pem = (const char *)certificate_in_use,
+//         .lwt_qos = 1};
+
+//     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+//     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+//     esp_err_t register_ret = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+//     printf("register_ret: %d\n", register_ret);
+//     // esp_mqtt_client_stop(client); // might prevent errors where the client is connected and there is a restart?????
+//     esp_err_t disc_ret = esp_mqtt_client_disconnect(client); // might prevent errors where the client is connected and there is a restart?????
+//     printf("disc_ret: %d\n", disc_ret);
+
+//     esp_err_t start_ret = esp_mqtt_client_start(client);
+//     printf("start_ret: %d\n", start_ret);
+// }
+
 // ================================================================================================= UPLOAD TASK
 
 void Upload_Task_Code(void *pvParameters)
@@ -223,8 +282,8 @@ void Upload_Task_Code(void *pvParameters)
     time_t now;
     time(&now);
 
-    // char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
-    char *jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+    char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+    // char *jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
 
     printf("jwt: %s\n", jwt);
 
@@ -242,6 +301,10 @@ void Upload_Task_Code(void *pvParameters)
     strcat(client_id, device_id);
     printf("len = %d, client_id: %s\n", strlen(client_id), client_id);
 
+    // int8_t use_backup_certificate = 0;
+    // int8_t certificate_in_use = 1; // 1 = primary, 2 = backup
+    // start_mqtt_client(jwt, client_id, use_backup_certificate);
+
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_GCP_URI,   // "mqtts://mqtt.2030.ltsapis.goog:8883"
         .host = CONFIG_GCP_HOST, // "mqtt.2030.ltsapis.goog"
@@ -250,14 +313,19 @@ void Upload_Task_Code(void *pvParameters)
         .password = jwt,
         .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
         .cert_pem = (const char *)mqtt_google_primary_pem,
+        // .cert_pem = (const char *)mqtt_google_backup_pem,
         .lwt_qos = 1};
 
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+    esp_err_t register_ret = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+    printf("register_ret: %d\n", register_ret);
     // esp_mqtt_client_stop(client); // might prevent errors where the client is connected and there is a restart?????
-    esp_mqtt_client_disconnect(client); // might prevent errors where the client is connected and there is a restart?????
-    esp_mqtt_client_start(client);
+    esp_err_t disc_ret = esp_mqtt_client_disconnect(client); // might prevent errors where the client is connected and there is a restart?????
+    printf("disc_ret: %d\n", disc_ret);
+
+    esp_err_t start_ret = esp_mqtt_client_start(client);
+    printf("start_ret: %d\n", start_ret);
 
     // Won't need to free this as it's used throughout the life of the program
     char *telemetry_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
@@ -282,8 +350,18 @@ void Upload_Task_Code(void *pvParameters)
 
     // on_mains_flag = -1;
 
+    mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
+
     for (;;)
     {
+        // if (use_backup_certificate == 0 && certificate_in_use == 2)
+        // {
+        //     start_mqtt_client(jwt, client_id, 0);
+        // }
+        // else if (use_backup_certificate == 1 && certificate_in_use == 1)
+        // {
+        //     start_mqtt_client(jwt, client_id, 1);
+        // }
         // // Check if we are on mains or battery power.
         // // Do this before WiFi and MQTT so the LED's don't turn on if device is on battery
         // int8_t on_mains = status_onMains();
@@ -316,6 +394,17 @@ void Upload_Task_Code(void *pvParameters)
         // }
 
         mains_flag_evaluation();
+
+        // printf("waiting for message to be added to queue...\n");
+        // uint64_t dummy_buf;
+        // xQueuePeek(upload_queue, &dummy_buf, portMAX_DELAY);
+        // printf("!!! message added to queue\n");
+
+        while (mqtt_connected_flag == 0)
+        {
+            ESP_LOGW(TAG, "waiting for mqtt to connect...");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
 
         esp_err_t wifi_info_res = ESP_ERR_WIFI_NOT_CONNECT;
         do
@@ -350,8 +439,8 @@ void Upload_Task_Code(void *pvParameters)
         {
             free(jwt); // USE REALLOC RATHER ????????????????????????????????????
             time(&now);
-            // jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
-            jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+            jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+            // jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
             ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
             esp_err_t stop_ret = esp_mqtt_client_stop(client);
             if (stop_ret == ESP_OK)
@@ -429,7 +518,7 @@ void Upload_Task_Code(void *pvParameters)
 
             printf("%s\n", telemetry_buf);
 
-            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            // vTaskDelay(5000 / portTICK_PERIOD_MS);
             // ============ MQTT ============ START
 
             int32_t upload_res = esp_mqtt_client_publish(client, telemetry_topic, telemetry_buf, 0, 1, 0);
@@ -483,11 +572,12 @@ void Upload_Task_Code(void *pvParameters)
             float success = ((float)success_count / total) * 100;
             printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
         }
-        else
-        {
-            // if there is no telemetry to upload delay and look again after some time (give the other tasks CPU time)
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-        }
+        // else
+        // {
+        //     // if there is no telemetry to upload delay and look again after some time (give the other tasks CPU time)
+        //     // vTaskDelay(1000 / portTICK_PERIOD_MS);
+        //     vTaskDelay(200 / portTICK_PERIOD_MS);
+        // }
 
         // ================================= STATUS Upload stuff =================================
 
@@ -559,6 +649,11 @@ void Upload_Task_Code(void *pvParameters)
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
         }
+
+        printf("waiting for message to be added to queue...\n");
+        uint64_t dummy_buf;
+        xQueuePeek(upload_queue, &dummy_buf, portMAX_DELAY);
+        printf("!!! message added to queue\n");
 
         // if (enter_deep_sleep_flag == 1 && software_update == 0 && telemetry_upload_pending == 0)
         // {

@@ -78,15 +78,15 @@ static void IRAM_ATTR rtc_alarm_isr(void *arg)
         xSemaphoreGive(count_gatekeeper);
         // xSemaphoreGiveFromISR(count_gatekeeper, NULL);
 
-        // if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100))
-        if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
-        // if (xSemaphoreTakeFromISR(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
-        // if (xSemaphoreTakeFromISR(rtc_alarm_flag_gatekeeper, NULL) == pdTRUE)
-        {
-            rtc_alarm_flag = true;
-            xSemaphoreGive(rtc_alarm_flag_gatekeeper);
+        // if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100)) // old
+        // if (xSemaphoreTake(rtc_alarm_flag_gatekeeper, 100) == pdTRUE)
+        // if (xSemaphoreTakeFromISR(rtc_alarm_flag_gatekeeper, 100) == pdTRUE) // old
+        // if (xSemaphoreTakeFromISR(rtc_alarm_flag_gatekeeper, NULL) == pdTRUE) // old
+        // {
+            // rtc_alarm_flag = true;
+            // xSemaphoreGive(rtc_alarm_flag_gatekeeper);
             // xSemaphoreGiveFromISR(rtc_alarm_flag_gatekeeper, NULL);
-        }
+        // }
         // send count and time data to Fram Task
 
         // get time from esp32

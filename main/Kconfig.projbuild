@@ -12,9 +12,9 @@ menu "Example Configuration"
 
 # KEYS ---------------------------------------------- KEYS
 
-    # config DEVICE_PRIVATE_KEY
-    #     string
-    #     default "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:5d:f6"
+    config DEVICE_PRIVATE_KEY
+        string
+        default "ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:5d:f6"
 # END KEYS ________________________ END KEYS
 
 
