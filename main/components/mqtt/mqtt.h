@@ -15,6 +15,10 @@
 #include "esp_tls.h"
 #include "esp_ota_ops.h"
 
+// OTA update -- >https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/partition-tables.html
+#include "esp_http_client.h"
+#include "esp_https_ota.h"
+
 #include "driver/gpio.h"
 
 // JWT
@@ -34,5 +38,6 @@ esp_err_t get_device_id(char device_id[]);
 extern char device_id[20];
 
 extern int8_t mqtt_connected_flag; // 1 = connected, 0 = not connected // https://stackoverflow.com/questions/1045501/how-do-i-share-variables-between-different-c-files
+extern bool restart_required_flag;
 
 #endif // _MQTT_H_

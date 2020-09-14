@@ -16,7 +16,7 @@ xQueueHandle fram_store_queue = NULL;
 static xQueueHandle upload_queue = NULL;
 static xQueueHandle ack_queue = NULL;
 
-bool restart_required_flag = false;
+bool restart_required_flag;
 
 // ====================================================== MQTT
 
@@ -53,6 +53,11 @@ void Fram_Task_Code(void *pvParameters)
 {
     TickType_t fram_store_ticks = 0; // dont wait first time, there might be a backlog and the chance of a new message in the queue right on startup is unlikely
 
+    const uint32_t short_ticks = 200;
+    const uint32_t long_ticks = 10000;
+
+    // bool restart_required_flag = false;
+
     for (;;)
     {
         uint64_t telemetry_to_store = 0;
@@ -84,6 +89,13 @@ void Fram_Task_Code(void *pvParameters)
             rtc_clear_alarm();
             minute_count++;
             ESP_LOGD(TAG, "minutes passed: %d", minute_count);
+        }
+
+        if (restart_required_flag == true)
+        {
+            ESP_LOGW(TAG, "------>> DEVICE RESTARTING IN 1 SECOND ... ");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            esp_restart();
         }
 
         uint64_t telemetry_to_delete = 0;
@@ -127,11 +139,11 @@ void Fram_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
             }
-            fram_store_ticks = 200 / portTICK_PERIOD_MS; // there might be a backlog so dont wait for new telemetry for long
+            fram_store_ticks = short_ticks / portTICK_PERIOD_MS; // there might be a backlog so dont wait for new telemetry for long
         }
         else
         {
-            fram_store_ticks = 10000 / portTICK_PERIOD_MS; // no message backlog in FRAM, just wait for new message
+            fram_store_ticks = long_ticks / portTICK_PERIOD_MS; // no message backlog in FRAM, just wait for new message
         }
     }
 }

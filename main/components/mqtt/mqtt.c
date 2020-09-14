@@ -2,12 +2,15 @@
 
 static char *getValueFromJson(const char *json_str, const uint32_t json_str_len, const char *key);
 static void firmware_update_check(const char *config_data, const int config_data_len);
+static esp_err_t firmware_update(const char *file_url, const char *certificate);
 
 char device_id[20];
 
 static const char *TAG = "MQTT";
 
 int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
+
+bool restart_required_flag = false;
 
 /**
  * Function to initialise MQTT
@@ -78,7 +81,10 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
 
-        firmware_update_check(event->data, event->data_len);
+        if (restart_required_flag == false)
+        {
+            firmware_update_check(event->data, event->data_len);
+        }
 
         break;
     case MQTT_EVENT_ERROR:
@@ -173,18 +179,71 @@ esp_err_t get_device_id(char device_id[])
 
 static void firmware_update_check(const char *config_data, const int config_data_len)
 {
+    const char *current_firmware = "1";
+    const char *firmware_version_key = "firmware_version";
+    const char *update_url_key = "url";
+
     ESP_LOGI(TAG, "checking firmware version for update");
-    char *config_firmware_version = getValueFromJson(config_data, config_data_len, "firmware_version");
+    char *config_firmware_version = getValueFromJson(config_data, config_data_len, firmware_version_key);
 
     if (config_firmware_version != NULL)
     {
         printf("config_firmware_version: %s (length: %d)\n", config_firmware_version, strlen(config_firmware_version));
 
-        printf("CONFIG_FIRMWARE_VERSION: %s\n", CONFIG_FIRMWARE_VERSION);
+        // printf("CONFIG_FIRMWARE_VERSION: %s\n", CONFIG_FIRMWARE_VERSION);
+        printf("CONFIG_FIRMWARE_VERSION: %s\n", current_firmware);
 
-        if (strcmp(config_firmware_version, CONFIG_FIRMWARE_VERSION) != 0)
+        // if (strcmp(config_firmware_version, CONFIG_FIRMWARE_VERSION) != 0)
+        if (strcmp(config_firmware_version, current_firmware) != 0)
         {
             printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIRMWARE UPDATE AVALIABLE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+
+            // Get url from config data (and certificate??)
+
+            char *update_url = getValueFromJson(config_data, config_data_len, update_url_key);
+            if (update_url != NULL)
+            {
+                const char *update_certificate =
+                    "-----BEGIN CERTIFICATE-----\n"
+                    "MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G\n"
+                    "A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp\n"
+                    "Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMjExMjE1\n"
+                    "MDgwMDAwWjBMMSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEG\n"
+                    "A1UEChMKR2xvYmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjCCASIwDQYJKoZI\n"
+                    "hvcNAQEBBQADggEPADCCAQoCggEBAKbPJA6+Lm8omUVCxKs+IVSbC9N/hHD6ErPL\n"
+                    "v4dfxn+G07IwXNb9rfF73OX4YJYJkhD10FPe+3t+c4isUoh7SqbKSaZeqKeMWhG8\n"
+                    "eoLrvozps6yWJQeXSpkqBy+0Hne/ig+1AnwblrjFuTosvNYSuetZfeLQBoZfXklq\n"
+                    "tTleiDTsvHgMCJiEbKjNS7SgfQx5TfC4LcshytVsW33hoCmEofnTlEnLJGKRILzd\n"
+                    "C9XZzPnqJworc5HGnRusyMvo4KD0L5CLTfuwNhv2GXqF4G3yYROIXJ/gkwpRl4pa\n"
+                    "zq+r1feqCapgvdzZX99yqWATXgAByUr6P6TqBwMhAo6CygPCm48CAwEAAaOBnDCB\n"
+                    "mTAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUm+IH\n"
+                    "V2ccHsBqBt5ZtJot39wZhi4wNgYDVR0fBC8wLTAroCmgJ4YlaHR0cDovL2NybC5n\n"
+                    "bG9iYWxzaWduLm5ldC9yb290LXIyLmNybDAfBgNVHSMEGDAWgBSb4gdXZxwewGoG\n"
+                    "3lm0mi3f3BmGLjANBgkqhkiG9w0BAQUFAAOCAQEAmYFThxxol4aR7OBKuEQLq4Gs\n"
+                    "J0/WwbgcQ3izDJr86iw8bmEbTUsp9Z8FHSbBuOmDAGJFtqkIk7mpM0sYmsL4h4hO\n"
+                    "291xNBrBVNpGP+DTKqttVCL1OmLNIG+6KYnX3ZHu01yiPqFbQfXf5WRDLenVOavS\n"
+                    "ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd\n"
+                    "AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7\n"
+                    "TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==\n"
+                    "-----END CERTIFICATE-----\n";
+
+                ESP_LOGI(TAG, "got update url from config");
+                // download firmware update
+                printf("update_url: %s\n", update_url);
+                esp_err_t ret = firmware_update(update_url, update_certificate);
+
+                // if firmware download was successful, set restart_required_flag = true
+                if (ret == ESP_OK)
+                {
+                    // set restart_required_flag = true;
+                    printf("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ SET RESTART REQUIRED FLAG = TRUE\n");
+                    restart_required_flag = true;
+                }
+            }
+            else
+            {
+                ESP_LOGW(TAG, "config doesn't contain update_url information...\n");
+            }
         }
         else
         {
@@ -193,7 +252,7 @@ static void firmware_update_check(const char *config_data, const int config_data
     }
     else
     {
-        ESP_LOGW(TAG, "config doesn't contain firmware information...\n");
+        ESP_LOGW(TAG, "config doesn't contain firmware_version information...\n");
     }
 
     free(config_firmware_version);
@@ -206,18 +265,13 @@ static void firmware_update_check(const char *config_data, const int config_data
 static char *getValueFromJson(const char *json_str, const uint32_t json_str_len, const char *key)
 {
     // we don't know how big the value will be but it can't be bigger than this
-    // char *value = (char *)malloc(strlen(json_str)); // message base 64 ??
     char *value = (char *)malloc(json_str_len); // message base 64 ??
     value[0] = '\0';
 
-    // printf("json_str: %s\n", json_str);
-
     uint32_t s_index = 0;
 
-    // for (uint32_t i = 0; i < strlen(json_str); i++)
     for (uint32_t i = 0; i < json_str_len; i++)
     {
-        // if (i < (strlen(json_str) - strlen(key)))
         if (i < (json_str_len - strlen(key)))
         {
             // This section gets through the "key"
@@ -238,7 +292,6 @@ static char *getValueFromJson(const char *json_str, const uint32_t json_str_len,
             if (done == true)
             {
                 uint32_t q_count = 0;
-                // for (uint32_t k = s_index + 1; k < strlen(json_str); k++)
                 for (uint32_t k = s_index + 1; k < json_str_len; k++)
                 {
                     if (json_str[k] == '"')
@@ -254,8 +307,6 @@ static char *getValueFromJson(const char *json_str, const uint32_t json_str_len,
                         while (json_str[k + count] != '"')
                         {
                             value[count - 1] = json_str[k + count];
-                            printf("json_str[%d + %d]: %c\n", k, count, json_str[k + count]);
-                            printf("value[(count = %d) - 1]: %c\n", count, value[count - 1]);
                             value[count] = '\0'; // make surre to keep null value at end of string (dont put it after the count++)
                             count++;
                         }
@@ -266,26 +317,16 @@ static char *getValueFromJson(const char *json_str, const uint32_t json_str_len,
         }
     }
 
-    for (int i = 0; i < strlen(value); i++)
-    {
-        printf("%d  %c\n", i, value[i]);
-    }
-
     if (strlen(value) > 0)
     {
-        printf("strlen(value) > 0 (%d)\n", strlen(value));
         // reallocate memory to just the size of the value
         value = (char *)realloc(value, strlen(value));
-
         return value;
     }
     else
     {
-        printf("strlen(value): %d\n", strlen(value));
         return NULL;
     }
-
-    // return value;
 }
 
 /**
@@ -298,32 +339,31 @@ static char *getValueFromJson(const char *json_str, const uint32_t json_str_len,
  * 
  * @return boolean: True if download was successful, false otherwise
  */
-/*
-bool CloudIoTCoreHttp::firmware_update(std::string file_url, const char *certificate)
+
+static esp_err_t firmware_update(const char *file_url, const char *certificate)
 {
-    // Serial.print("[UPDATE] downloading firmware update");
     ESP_LOGI(TAG, "downloading firmware update");
 
-    esp_http_client_config_t config{};
-    config.url = file_url.c_str();
-    config.cert_pem = certificate;
+    esp_http_client_config_t config = {
+        .url = file_url,
+        .cert_pem = certificate,
+    };
 
     esp_err_t ret = esp_https_ota(&config);
 
     if (ret == ESP_OK)
     {
-        // Serial.println("[UPDATE] successfully downloaded new firmware");
         ESP_LOGI(TAG, "successfully downloaded new firmware");
-        return true;
+        return ESP_OK;
     }
     else
     {
-        // Serial.println("[UPDATE] could not downloaded new firmware");
         ESP_LOGE(TAG, "could not downloaded new firmware");
-        return false;
+        return ret;
     }
 }
 
+/*
 
 bool CloudIoTCoreHttp::update_avaliable(const std::string current_firmware_version, const char *update_certificate)
 {
