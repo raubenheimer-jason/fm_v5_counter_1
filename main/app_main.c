@@ -96,7 +96,9 @@ void Fram_Task_Code(void *pvParameters)
 {
     // int8_t received_telemetry = 0; // 0 = no telemetry received, 1 = received telemetry
 
-    xTicksToWait s = 5;
+    TickType_t fram_store_ticks = 0; // dont wait first time, there might be a backlog and the chance of a new message in the queue right on startup is unlikely
+
+    // int8_t have_backlog_flag = 0; // 1 = there is a backlog, 0 = there is no backlog
 
     for (;;)
     {
@@ -116,7 +118,7 @@ void Fram_Task_Code(void *pvParameters)
 
         uint64_t telemetry_to_store = 0;
         // if (xQueueReceive(fram_store_queue, &telemetry_to_store, 0))
-        if (xQueueReceive(fram_store_queue, &telemetry_to_store, 1000 / portTICK_PERIOD_MS))
+        if (xQueueReceive(fram_store_queue, &telemetry_to_store, fram_store_ticks))
         {
             ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
             ESP_LOGD(TAG, "received telemetry_to_store");
@@ -188,7 +190,15 @@ void Fram_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
             }
+            printf("-- short ticks to wait --\n");
+            fram_store_ticks = 100 / portTICK_PERIOD_MS; // there might be a backlog so dont wait for new telemetry for long
         }
+        else
+        {
+            printf("------- long ticks to wait -------\n");
+            fram_store_ticks = 10000 / portTICK_PERIOD_MS; // no message backlog in FRAM, just wait for new message
+        }
+
         // else
         // {
         //     vTaskDelay(200 / portTICK_PERIOD_MS);
