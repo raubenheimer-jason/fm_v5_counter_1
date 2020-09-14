@@ -12,6 +12,9 @@
 
 // #include "../../config.h"
 
+#define INCLUDE_RTC_TEST 0     // dont include the rtc test function unless we need to use it (just dont want to delete it)
+#define INCLUDE_UINT8_TO_BCD 0 // dont include unless we need to use it (just dont want to delete it)  (uint8_to_bcd)
+
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)       \
     (byte & 0x80 ? '1' : '0'),     \
@@ -28,8 +31,11 @@
 esp_err_t rtc_set_date_time(const time_t *unix);
 // esp_err_t rtc_set_date_time(uint32_t unix);
 uint32_t rtc_get_unix(); //, uint32_t *unix)
-void rtc_test(void);
 esp_err_t rtc_begin(uint8_t scl_pin, uint8_t sda_pin);
+
+#if INCLUDE_RTC_TEST
+void rtc_test(void);
+#endif // INCLUDE_RTC_TEST
 
 void rtc_print_status_register(void);
 void rtc_print_control_register(void);

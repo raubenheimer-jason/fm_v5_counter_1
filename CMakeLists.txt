@@ -11,3 +11,4 @@ project(fm_v5_counter_1)
 
 target_add_binary_data(fm_v5_counter_1.elf "main/mqtt_google_primary.pem" TEXT)
 target_add_binary_data(fm_v5_counter_1.elf "main/mqtt_google_backup.pem" TEXT)
+target_add_binary_data(fm_v5_counter_1.elf "main/device_private_key.pem" TEXT)

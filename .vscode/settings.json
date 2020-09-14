@@ -17,6 +17,7 @@
     "*.inc": "c",
     "wifi.h": "c",
     "time.h": "c",
-    "time_init.h": "c"
+    "time_init.h": "c",
+    "cstddef": "cpp"
   }
 }

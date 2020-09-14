@@ -4,12 +4,14 @@
 
 // Static prototypes
 static uint8_t bcd_to_uint8(uint8_t val);
-static uint8_t uint8_to_bcd(uint8_t val);
 static uint8_t bcd_to_bin_24h(uint8_t bcdHour);
 static void rtc_write_reg(uint8_t reg, uint8_t value);
 static uint8_t rtc_read_reg(uint8_t reg);
 static esp_err_t i2c_master_init(uint8_t scl_pin, uint8_t sda_pin);
 static void rtc_print_register(uint8_t reg_addr);
+#if INCLUDE_UINT8_TO_BCD
+static uint8_t uint8_to_bcd(uint8_t val);
+#endif // INCLUDE_UINT8_TO_BCD
 
 static const char *TAG = "RTC";
 
@@ -113,6 +115,7 @@ static void rtc_print_register(uint8_t reg_addr)
     printf("reg [%#08x]: " BYTE_TO_BINARY_PATTERN "\n", reg_addr, BYTE_TO_BINARY(reg_val));
 }
 
+#if INCLUDE_RTC_TEST
 void rtc_test(void)
 {
     ESP_LOGI(TAG, "------------------- RTC test -------------------");
@@ -122,7 +125,8 @@ void rtc_test(void)
 
     esp_err_t ret;
 
-    uint32_t unix_to_set = 1598008483;
+    // uint32_t unix_to_set = 1598008483;
+    time_t unix_to_set = 1598008483;
 
     uint32_t unix_from_rtc = 0;
 
@@ -159,6 +163,7 @@ void rtc_test(void)
         vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }
+#endif // INCLUDE_RTC_TEST
 
 /**
  * Read the time from the RTC and return the Unix
@@ -317,7 +322,7 @@ esp_err_t rtc_set_date_time(const time_t *unix)
     uint8_t seconds_time = my_time.tm_sec;
     uint8_t minutes_time = my_time.tm_min;
     uint8_t hours_time = my_time.tm_hour;
-    uint8_t dow_time = my_time.tm_wday + 1;
+    // uint8_t dow_time = my_time.tm_wday + 1;
     uint8_t date_time = my_time.tm_mday;
     uint8_t month_time = my_time.tm_mon + 1;
     uint8_t year_time = my_time.tm_year;
@@ -434,6 +439,7 @@ static uint8_t bcd_to_uint8(uint8_t val)
     return val - 6 * (val >> 4);
 }
 
+#if INCLUDE_UINT8_TO_BCD
 /**
  * Convert uint8_t to BCD
  */
@@ -441,6 +447,7 @@ static uint8_t uint8_to_bcd(uint8_t val)
 {
     return val + 6 * (val / 10);
 }
+#endif //INCLUDE_UINT8_TO_BCD
 
 /**
  * Convert BCD to binary for 24h time (I think...??)
@@ -496,8 +503,6 @@ static uint8_t rtc_read_reg(uint8_t reg_addr)
     uint8_t value = 0;
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-
-    int i = 0;
 
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, DS3231_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);

@@ -63,10 +63,12 @@ bool restart_required_flag = false;
 
 char device_id[20];
 
-const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
+// const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 
 extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
 extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
+
+extern const char device_private_key[] asm("_binary_device_private_key_pem_start");
 
 // ------------------------------------- END MQTT
 
@@ -221,7 +223,8 @@ void Upload_Task_Code(void *pvParameters)
     time_t now;
     time(&now);
 
-    char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+    // char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+    char *jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
 
     printf("jwt: %s\n", jwt);
 
@@ -347,7 +350,8 @@ void Upload_Task_Code(void *pvParameters)
         {
             free(jwt); // USE REALLOC RATHER ????????????????????????????????????
             time(&now);
-            jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+            // jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+            jwt = createJwt(device_private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
             ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
             esp_err_t stop_ret = esp_mqtt_client_stop(client);
             if (stop_ret == ESP_OK)
@@ -547,6 +551,12 @@ void Upload_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
                 minute_count = 1; // (or is it 0?? --> make sure to initialise the variable to the correct one)
+            }
+            else
+            {
+                ESP_LOGE(TAG, "upload STATUS sending failed  !!!");
+
+                vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
         }
 
