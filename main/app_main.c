@@ -190,12 +190,12 @@ void Fram_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
             }
-            printf("-- short ticks to wait --\n");
-            fram_store_ticks = 100 / portTICK_PERIOD_MS; // there might be a backlog so dont wait for new telemetry for long
+            // printf("-- short ticks to wait --\n");
+            fram_store_ticks = 200 / portTICK_PERIOD_MS; // there might be a backlog so dont wait for new telemetry for long
         }
         else
         {
-            printf("------- long ticks to wait -------\n");
+            // printf("------- long ticks to wait -------\n");
             fram_store_ticks = 10000 / portTICK_PERIOD_MS; // no message backlog in FRAM, just wait for new message
         }
 
@@ -323,7 +323,7 @@ void Upload_Task_Code(void *pvParameters)
         .password = jwt,
         .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
         .cert_pem = (const char *)mqtt_google_primary_pem,
-        // .cert_pem = (const char *)mqtt_google_backup_pem,
+        // .cert_pem = (const char *)mqtt_google_backup_pem, // old
         .lwt_qos = 1};
 
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
@@ -660,10 +660,10 @@ void Upload_Task_Code(void *pvParameters)
             }
         }
 
-        printf("waiting for message to be added to queue...\n");
+        // printf("waiting for message to be added to queue...\n");
         uint64_t dummy_buf;
-        xQueuePeek(upload_queue, &dummy_buf, portMAX_DELAY);
-        printf("!!! message added to queue\n");
+        xQueuePeek(upload_queue, &dummy_buf, 30000 / portTICK_PERIOD_MS); // like a delay but the delay will end if there is a new message
+        // printf("!!! message added to queue\n");
 
         // if (enter_deep_sleep_flag == 1 && software_update == 0 && telemetry_upload_pending == 0)
         // {
