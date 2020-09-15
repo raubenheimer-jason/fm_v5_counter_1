@@ -1,5 +1,23 @@
 // FM_V5_counter_1
 
+// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+/*
+    -   -- DONE -- Have a safety that resets the device if the number of failed mqtt messages gets too high
+                   (also count down if there are successful messages, similar to winery thermometer)
+    -   test restart safety ^^
+
+    -   -- DONE -- Put primary certificate before backup in pem file (shouldn't make a difference? -- at least test)
+
+    -   Make OTA more robust
+
+    -   Check if sensor could see reflector or not when it gets a 0 reaading
+
+    -   Publish state to GCP IOT Core?
+
+    -   Test flash encryption etc.
+*/
+// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+
 #include "main.h"
 
 // // For printing uint64_t
@@ -24,10 +42,10 @@ char device_id[20];
 
 const char *private_key = CONFIG_DEVICE_PRIVATE_KEY;
 
-// extern const uint8_t mqtt_google_primary_pem[] asm("_binary_mqtt_google_primary_pem_start");
-// extern const uint8_t mqtt_google_backup_pem[] asm("_binary_mqtt_google_backup_pem_start");
+extern const uint8_t mqtt_primary_backup_pem[] asm("_binary_mqtt_primary_backup_pem_start"); // contains both primary and backup certificates (primary first, but doesn't seem to matter)
 
-extern const uint8_t mqtt_primary_backup_pem[] asm("_binary_mqtt_primary_backup_pem_start");
+const uint32_t max_upload_errors = 60; // maximum upload errors before device resets
+uint32_t upload_error_count = 0;       // if the number of errors exceeds a limit, restart device
 
 // ------------------------------------- END MQTT
 
@@ -43,22 +61,16 @@ int8_t on_mains_flag; // default on battery power to start??
 
 // ------------------------------------- END STATUS
 
-void set_restart_required_flag()
-{
-    restart_required_flag = true;
-    ESP_LOGW(TAG, "restart_required_flag set true");
-}
-
 // ================================================================================================= FRAM TASK
 
 void Fram_Task_Code(void *pvParameters)
 {
+    static const char *TAG = "APP_MAIN [FRAM_TASK]";
+
     TickType_t fram_store_ticks = 0; // dont wait first time, there might be a backlog and the chance of a new message in the queue right on startup is unlikely
 
     const uint32_t short_ticks = 200;
     const uint32_t long_ticks = 10000;
-
-    // bool restart_required_flag = false;
 
     for (;;)
     {
@@ -152,10 +164,13 @@ void Fram_Task_Code(void *pvParameters)
 
 // ================================================================================================= FRAM TASK
 
+/**
+ * Check if we are on mains or battery power
+ * Force the status update if there is a change
+ * Do this before WiFi and MQTT so the LED's don't turn on if device is on battery
+ */
 void mains_flag_evaluation(void)
 {
-    // Check if we are on mains or battery power.
-    // Do this before WiFi and MQTT so the LED's don't turn on if device is on battery
     int8_t on_mains = status_onMains();
     if (on_mains_flag != on_mains)
     {
@@ -179,10 +194,60 @@ void mains_flag_evaluation(void)
     }
 }
 
+/**
+ * Only call function from UPLOAD TASK
+ * Used before the restart (if restar_required_flag = true)
+ */
+void stop_wifi_and_mqtt(esp_mqtt_client_handle_t client)
+{
+    ESP_LOGW(TAG, "disconnecting mqtt");
+    esp_mqtt_client_disconnect(client);
+
+    ESP_LOGW(TAG, "stopping mqtt");
+    esp_mqtt_client_stop(client);
+
+    ESP_LOGW(TAG, "disconnecting wifi");
+    esp_wifi_disconnect();
+}
+
+/**
+ * Increments the upload error count (only) if telemetry publish failed
+ * Checks if the max errors has been exceeded, if it has, starts the restart process
+ */
+void increment_upload_error_count(esp_mqtt_client_handle_t client)
+{
+    upload_error_count++;
+    ESP_LOGW(TAG, "upload_error_count++");
+    if (upload_error_count > max_upload_errors)
+    {
+        ESP_LOGE(TAG, "upload_error_count > max_upload_errors, will begin the restart process");
+        stop_wifi_and_mqtt(client);
+        ESP_LOGI(TAG, "UPLOAD TASK shutdown complete, waiting for FRAM TASK");
+        restart_required_flag = true;
+        for (;;)
+        {
+        }
+    }
+}
+
+/**
+ * Decrements the upload_error_count if it is greater than 0
+ * Only for telemetry publish success
+ */
+void decrement_upload_error_count(void)
+{
+    if (upload_error_count > 0)
+    {
+        upload_error_count--;
+    }
+}
+
 // ================================================================================================= UPLOAD TASK
 
 void Upload_Task_Code(void *pvParameters)
 {
+    static const char *TAG = "APP_MAIN [UPLOAD_TASK]";
+
     // ============ MQTT ============
 
     jwt_update_check();
@@ -214,10 +279,8 @@ void Upload_Task_Code(void *pvParameters)
         .port = CONFIG_GCP_PORT, // 8883
         .username = "unused",
         .password = jwt,
-        .client_id = client_id, // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
-        // .cert_pem = (const char *)mqtt_google_primary_pem,
-        // .cert_pem = (const char *)mqtt_google_backup_pem,
-        .cert_pem = (const char *)mqtt_primary_backup_pem,
+        .client_id = client_id,                            // "projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device"
+        .cert_pem = (const char *)mqtt_primary_backup_pem, // contains both primary and backup certificates
         .lwt_qos = 1};
 
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
@@ -244,7 +307,7 @@ void Upload_Task_Code(void *pvParameters)
     uint64_t telemetry_to_upload = 0;
 
     uint32_t success_count = 0;
-    uint32_t error_count = 0;
+    uint32_t error_count = 0; // just for displaying to the console
 
     mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
 
@@ -301,6 +364,8 @@ void Upload_Task_Code(void *pvParameters)
             if (stop_ret == ESP_OK)
             {
                 ESP_LOGI(TAG, "mqtt stop successful");
+
+                mqtt_connected_flag = 0;
 
                 mqtt_cfg.password = jwt;
                 esp_err_t ret = esp_mqtt_set_config(client, &mqtt_cfg);
@@ -386,7 +451,8 @@ void Upload_Task_Code(void *pvParameters)
 
             if (upload_res > 0) // surely message ID won't be 0 ??
             {
-                success_count++;
+                decrement_upload_error_count(); // increment_upload_error_count(client); // will set restart_required_flag = true if the count exceeds the limit
+                success_count++;                // just for display
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
                     status_incrementMqttUploadSuccess();
@@ -410,7 +476,8 @@ void Upload_Task_Code(void *pvParameters)
             }
             else
             {
-                error_count++;
+                increment_upload_error_count(client); // will set restart_required_flag = true if the count exceeds the limit
+                error_count++;                        // just for display
                 ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!!");
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
@@ -533,6 +600,10 @@ void app_main(void)
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
 
     esp_log_level_set("APP_MAIN", ESP_LOG_VERBOSE);
+
+    ESP_LOGI(TAG, "***************************************************************************************************************************");
+    ESP_LOGI(TAG, "                                                FIRMWARE VERSION:  %s", CONFIG_FIRMWARE_VERSION);
+    ESP_LOGI(TAG, "***************************************************************************************************************************");
 
     // FRAM
     fram_spi_init();

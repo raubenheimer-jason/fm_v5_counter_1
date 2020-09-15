@@ -96,7 +96,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
             if (event->error_handle->esp_tls_stack_err == 0x2700)
             {
-                ESP_LOGI(TAG, "CHANGE CERTIGICATES ????????????????????");
+                ESP_LOGE(TAG, "CHANGE CERTIGICATES ????????????????????");
             }
         }
         else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED)
@@ -179,7 +179,7 @@ esp_err_t get_device_id(char device_id[])
 
 static void firmware_update_check(const char *config_data, const int config_data_len)
 {
-    const char *current_firmware = "1";
+    // const char *current_firmware = "1";
     const char *firmware_version_key = "firmware_version";
     const char *update_url_key = "url";
 
@@ -188,13 +188,13 @@ static void firmware_update_check(const char *config_data, const int config_data
 
     if (config_firmware_version != NULL)
     {
-        printf("config_firmware_version: %s (length: %d)\n", config_firmware_version, strlen(config_firmware_version));
+        // printf("config_firmware_version: %s (length: %d)\n", config_firmware_version, strlen(config_firmware_version));
 
         // printf("CONFIG_FIRMWARE_VERSION: %s\n", CONFIG_FIRMWARE_VERSION);
-        printf("CONFIG_FIRMWARE_VERSION: %s\n", current_firmware);
+        // printf("CONFIG_FIRMWARE_VERSION: %s\n", current_firmware);
 
-        // if (strcmp(config_firmware_version, CONFIG_FIRMWARE_VERSION) != 0)
-        if (strcmp(config_firmware_version, current_firmware) != 0)
+        if (strcmp(config_firmware_version, CONFIG_FIRMWARE_VERSION) != 0)
+        // if (strcmp(config_firmware_version, current_firmware) != 0)
         {
             printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIRMWARE UPDATE AVALIABLE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
 
@@ -338,7 +338,7 @@ static char *getValueFromJson(const char *json_str, const uint32_t json_str_len,
  * @param file_url: Url (including token) of the location of the firmware.bin file in cloud storage
  * @param certificate: Public certificate for cloud storage
  * 
- * @return boolean: True if download was successful, false otherwise
+ * @return esp_err_t: ESP_OK if download was successful, the error otherwise
  */
 
 static esp_err_t firmware_update(const char *file_url, const char *certificate)
@@ -363,86 +363,3 @@ static esp_err_t firmware_update(const char *file_url, const char *certificate)
         return ret;
     }
 }
-
-/*
-
-bool CloudIoTCoreHttp::update_avaliable(const std::string current_firmware_version, const char *update_certificate)
-{
-    latest_config = getConfig().c_str();
-    std::string binaryData_b64{getValueFromJson(latest_config, "binaryData")}; // message base 64
-    std::string binaryData = base64_decode(binaryData_b64);
-    std::string latest_config_firmware_version{getValueFromJson(binaryData, "firmware_version")};
-
-    if (current_firmware_version != latest_config_firmware_version)
-    {
-        // std::string to_print{current_firmware_version};
-        // to_print += " != ";
-        // to_print += latest_config_firmware_version;
-        // Serial.println(to_print.c_str());
-
-        ESP_LOGI(TAG, "%s != %s", current_firmware_version, latest_config_firmware_version);
-
-        std::string file_url{getValueFromJson(binaryData, "file_url")};
-
-        return firmware_update(file_url, update_certificate);
-    }
-    else
-    {
-        return false;
-    }
-}
-
-
-std::string getValueFromJson(std::string json_str, std::string key)
-{
-    std::string value{}; // message base 64
-
-    int s_index{};
-
-    for (int i{}; i < json_str.length(); i++)
-    {
-        if (i < (json_str.length() - key.length()))
-        {
-            bool done{true};
-            for (int j{}; j < key.length(); j++)
-            {
-                if (key[j] == json_str[i + j])
-                {
-                    s_index = i + j;
-                }
-                else
-                {
-                    done = false;
-                    break;
-                }
-            }
-            if (done == true)
-            {
-                int q_count{};
-                for (int k{s_index + 1}; k < json_str.length(); k++)
-                {
-                    if (json_str[k] == '"')
-                    {
-                        q_count++;
-                    }
-
-                    if (q_count >= 2)
-                    {
-                        int count{1};
-
-                        while (json_str[k + count] != '"')
-                        {
-                            value += json_str[k + count];
-                            count++;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    return value;
-}
-
-*/
