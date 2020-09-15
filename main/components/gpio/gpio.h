@@ -21,4 +21,6 @@ esp_err_t gpio_initial_setup(void);
 // Declerations
 extern int8_t on_mains_flag; // Don't have any LED's on when on battery power
 
+extern xQueueHandle fram_store_queue; // https://stackoverflow.com/questions/1045501/how-do-i-share-variables-between-different-c-files
+
 #endif // _GPIO_H_

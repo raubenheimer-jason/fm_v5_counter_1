@@ -16,7 +16,8 @@ idf_component_register(
         "components/jwt/jwt.c"
         "components/mqtt/mqtt.c"
         "components/status/status.c"
-        "components/upload_task/upload_task.c"
+        "upload_task.c"
+        "fram_task.c"
     INCLUDE_DIRS
         "."
 )
