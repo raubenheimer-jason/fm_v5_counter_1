@@ -22,6 +22,18 @@
 */
 // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
+/*
+    ES256
+
+    -----BEGIN PUBLIC KEY-----
+    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIk+73DCFlHAiRJbgxGqt8loMTMD8
+    woXrlldwibH6K5gRdqn5CpdKahEtcHqgi7z7pr7ioaq4a714bzKNeT3Yug==
+    -----END PUBLIC KEY-----
+
+    DEVICE_PRIVATE_KEY
+    ab:05:1e:33:36:d9:b0:1e:b2:00:1a:b2:da:1c:21:84:bf:ee:46:5e:3a:7d:3f:11:1f:73:a6:4b:bd:d7:5d:f6
+*/
+
 #include "main.h"
 
 // // For printing uint64_t
@@ -38,7 +50,7 @@ xQueueHandle fram_store_queue = NULL;
 xQueueHandle upload_queue = NULL;
 xQueueHandle ack_queue = NULL;
 
-bool restart_required_flag;
+// bool restart_required_flag;
 
 static void start_upload_task(void)
 {
@@ -196,6 +208,11 @@ void app_main(void)
 
     // MQTT
     mqtt_init(); // make sure NVS is initiated first (done in wifi)
+
+    // for (;;)
+    // {
+    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // }
 
     // Tasks
     start_fram_task();

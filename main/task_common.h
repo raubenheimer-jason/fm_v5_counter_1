@@ -11,6 +11,8 @@
 // status
 #include "components/status/status.h"
 
+#include "extern_vars.h" // extern variables
+
 extern xQueueHandle ack_queue; // https://stackoverflow.com/questions/1045501/how-do-i-share-variables-between-different-c-files
 extern xQueueHandle upload_queue;
 

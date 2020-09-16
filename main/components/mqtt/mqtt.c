@@ -9,9 +9,7 @@ char device_id[20];
 
 static const char *TAG = "MQTT";
 
-int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
-
-bool restart_required_flag = false;
+// int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
 
 /**
  * Function to initialise MQTT
@@ -81,7 +79,10 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
+        printf("DATA LEN=%d\n", event->data_len);
 
+        // if (event->data_len > 0) // functions crash otherwise
+        // {
         if (is_json_valid(event->data, event->data_len) == true)
         {
             if (restart_required_flag == false)
@@ -93,6 +94,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         {
             ESP_LOGE(TAG, "config data does not contain valid json");
         }
+        // }
 
         break;
     case MQTT_EVENT_ERROR:
@@ -139,11 +141,18 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
  */
 static bool is_json_valid(const char *json, uint32_t json_len)
 {
+    if (json_len < 1)
+    {
+        ESP_LOGE(TAG, "error with json (json_len < 1, json_len = %d)", json_len);
+        return false;
+    }
+
     if (json[0] != '{' || json[json_len - 1] != '}')
     {
         ESP_LOGE(TAG, "error with json (not starting and ending in \"{}\", got %c and %c instead)", json[0], json[json_len - 1]);
         return false;
     }
+
     ESP_LOGI(TAG, "valid json");
     return true;
 }
@@ -194,9 +203,10 @@ esp_err_t get_device_id(char device_id[])
         return res;
     }
 
-    // sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]); // KEEP THIS !!!!!!!!!!!!!
+    sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]); // KEEP THIS !!!!!!!!!!!!!
+    // printf("C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]);
 
-    sprintf(device_id, "new-test-device"); //new-test-device
+    // sprintf(device_id, "new-test-device"); //new-test-device
 
     return ESP_OK;
 }

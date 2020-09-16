@@ -9,6 +9,8 @@ static const char *TAG = "FRAM_TASK";
 */
 int8_t on_mains_flag; // default on battery power to start??
 
+bool restart_required_flag = false;
+
 /**
  * Check if we are on mains or battery power
  * Force the status update if there is a change

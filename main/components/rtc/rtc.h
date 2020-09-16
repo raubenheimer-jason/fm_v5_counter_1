@@ -26,7 +26,7 @@
 
 // Non-static prototypes
 esp_err_t rtc_set_date_time(const time_t *unix);
-uint32_t rtc_get_unix(); //, uint32_t *unix)
+uint32_t rtc_get_unix();
 esp_err_t rtc_begin(uint8_t scl_pin, uint8_t sda_pin);
 
 #if INCLUDE_RTC_TEST

@@ -13,6 +13,8 @@ extern const uint8_t mqtt_primary_backup_pem[] asm("_binary_mqtt_primary_backup_
 const uint32_t max_upload_errors = 60; // maximum upload errors before device resets
 uint32_t upload_error_count = 0;       // if the number of errors exceeds a limit, restart device
 
+int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
+
 /**
  * Only call function from UPLOAD TASK
  * Used before the restart (if restar_required_flag = true)
@@ -127,7 +129,7 @@ void Upload_Task_Code(void *pvParameters)
     uint32_t success_count = 0;
     uint32_t error_count = 0; // just for displaying to the console
 
-    mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
+    // int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
 
     for (;;)
     {
