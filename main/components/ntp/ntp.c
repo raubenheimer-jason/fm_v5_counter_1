@@ -29,7 +29,7 @@ void time_sync_notification_cb(struct timeval *tv)
 
     if (rtc_unix < ((uint32_t)unix_now - time_tolerance) || rtc_unix > ((uint32_t)unix_now + time_tolerance))
     {
-        ESP_LOGW(TAG, "RTC time needs to be updated");
+        ESP_LOGE(TAG, "-------------------------------------------- RTC time needs to be updated --------------------------------------------");
         time(&unix_now); // make sure unix_now is up to date
         esp_err_t ret = rtc_set_date_time(&unix_now);
         if (ret != ESP_OK)

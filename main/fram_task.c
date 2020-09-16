@@ -55,7 +55,7 @@ void Fram_Task_Code(void *pvParameters)
         uint64_t telemetry_to_store = 0;
         if (xQueueReceive(fram_store_queue, &telemetry_to_store, fram_store_ticks))
         {
-            ESP_LOGI(TAG, "-------------------------- rtc alarm!! -------------------------- ");
+            ESP_LOGD(TAG, "-------------------------- rtc alarm!! -------------------------- ");
             ESP_LOGD(TAG, "received telemetry_to_store");
 
             // Store telemetry in FRAM
@@ -77,6 +77,19 @@ void Fram_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
             }
+
+            // time_t rtc_unix = rtc_get_unix();
+
+            // time_t system_unix;
+            // time(&system_unix);
+
+            // printf("rtc_unix:     %d\n", (int)rtc_unix);
+            // printf("system_unix:  %d\n", (int)system_unix);
+
+            // if ((rtc_unix - system_unix) != 0)
+            // {
+            //     ESP_LOGE(TAG, "error with unix???");
+            // }
 
             rtc_clear_alarm();
             minute_count++;

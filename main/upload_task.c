@@ -2,14 +2,7 @@
 
 static const char *TAG = "UPLOAD_TASK";
 
-// xSemaphoreHandle status_struct_gatekeeper = NULL;
-
-// xQueueHandle fram_store_queue = NULL;
-// xQueueHandle upload_queue = NULL;
-
 uint8_t minute_count = 61; // Force status update on restart. Count of the minutes to know when an hour has passed (for uploading the status)
-
-// ====================================================== MQTT
 
 char device_id[20];
 
@@ -19,40 +12,6 @@ extern const uint8_t mqtt_primary_backup_pem[] asm("_binary_mqtt_primary_backup_
 
 const uint32_t max_upload_errors = 60; // maximum upload errors before device resets
 uint32_t upload_error_count = 0;       // if the number of errors exceeds a limit, restart device
-
-// ------------------------------------- END MQTT
-
-// // ====================================================== MQTT
-
-// /**
-//  * Check if we are on mains or battery power
-//  * Force the status update if there is a change
-//  * Do this before WiFi and MQTT so the LED's don't turn on if device is on battery
-//  */
-// void mains_flag_evaluation(void)
-// {
-//     int8_t on_mains = status_onMains();
-//     if (on_mains_flag != on_mains)
-//     {
-//         if (on_mains == 0) // Not on mains (on battery)
-//         {
-//             ESP_LOGW(TAG, "device on battery power");
-//             on_mains_flag = 0;
-//             minute_count = 61; // force the status update
-//         }
-//         else if (on_mains == 1)
-//         {
-//             ESP_LOGI(TAG, "device on mains power");
-//             on_mains_flag = 1;
-//             minute_count = 61; // force the status update
-//         }
-//         else
-//         {
-//             ESP_LOGE(TAG, "weird error - is the device on battery or on mains power?");
-//             minute_count = 61; // force the status update
-//         }
-//     }
-// }
 
 /**
  * Only call function from UPLOAD TASK
@@ -317,7 +276,10 @@ void Upload_Task_Code(void *pvParameters)
                     status_incrementMqttUploadSuccess();
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
-                ESP_LOGI(TAG, "-->> PUBLISH SUCCESS!!!!");
+
+                uint32_t total = success_count + error_count;
+                float success = ((float)success_count / total) * 100;
+                ESP_LOGI(TAG, "-->> PUBLISH SUCCESS!!!!  -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)", success, success_count, total, success_count, error_count, total);
 
                 previously_uploaded_telemetry = telemetry_to_upload;
                 need_to_upload_flag = false;
@@ -337,7 +299,10 @@ void Upload_Task_Code(void *pvParameters)
             {
                 increment_upload_error_count(client); // will set restart_required_flag = true if the count exceeds the limit
                 error_count++;                        // just for display
-                ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!!");
+                uint32_t total = success_count + error_count;
+                float success = ((float)success_count / total) * 100;
+                // printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
+                ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!! -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)", success, success_count, total, success_count, error_count, total);
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
                     status_incrementMqttUploadErrors();
@@ -346,9 +311,9 @@ void Upload_Task_Code(void *pvParameters)
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
 
-            uint32_t total = success_count + error_count;
-            float success = ((float)success_count / total) * 100;
-            printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
+            // uint32_t total = success_count + error_count;
+            // float success = ((float)success_count / total) * 100;
+            // printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
         }
 
         // ================================= STATUS Upload stuff =================================
@@ -406,6 +371,6 @@ void Upload_Task_Code(void *pvParameters)
         }
 
         uint64_t dummy_buf;
-        xQueuePeek(upload_queue, &dummy_buf, 30000 / portTICK_PERIOD_MS); // like a delay but the delay will end if there is a new message
+        xQueuePeek(upload_queue, &dummy_buf, 90000 / portTICK_PERIOD_MS); // like a delay but the delay will end if there is a new message
     }
 }

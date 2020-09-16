@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include "esp_log.h"
 
-// #include "esp_system.h"
 #include "esp_event.h"
 #include "freertos/queue.h" // need esp_event.h before this
 

@@ -10,8 +10,6 @@
 #include "esp_netif.h"
 
 #include "esp_log.h"
-// #include "mqtt_client.h"
-// #include "esp_tls.h"
 #include "esp_ota_ops.h"
 
 #include "main.h"
@@ -22,7 +20,6 @@
 #include "components/time_init/time_init.h"
 
 // // FRAM
-// #include "components/fram/fram.h"
 #include "fram_task.h"
 
 // wifi
@@ -35,17 +32,12 @@
 #include "components/gpio/gpio.h"
 
 // // MQTT
-// #include "components/mqtt/mqtt.h"
 #include "upload_task.h"
 
 // status
 #include "components/status/status.h"
 
-// extern xQueueHandle fram_store_queue; // https://stackoverflow.com/questions/1045501/how-do-i-share-variables-between-different-c-files
-// extern SemaphoreHandle_t rtc_alarm_flag_gatekeeper;
-
 #include "task_common.h"
-
 
 // Task prototypes
 void Fram_Task_Code(void *pvParameters);

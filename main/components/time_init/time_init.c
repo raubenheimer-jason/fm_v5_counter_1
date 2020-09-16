@@ -21,6 +21,7 @@ void time_init(void)
         tv.tv_sec = rtc_unix;
         tv.tv_usec = 0;
         settimeofday(&tv, NULL);
+        ESP_LOGI(TAG, "system time set from RTC (rtc_unix: %d)", rtc_unix);
     }
 
     rtc_config_alarm();

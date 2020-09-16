@@ -257,18 +257,18 @@ uint32_t rtc_get_unix()
 
     if (ret == ESP_OK)
     {
-        bool print_info = false;
 
-        if (print_info)
-        {
-            printf("seconds: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(seconds_reg));
-            printf("minutes: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(minutes_reg));
-            printf("hours: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(hours_reg));
-            printf("day: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(dow_reg));
-            printf("date: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(date_reg));
-            printf("month: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(month_reg));
-            printf("year: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(year_reg));
-        }
+#define PRINT_INFO_GET_RTC_UNIX 1
+
+#if PRINT_INFO_GET_RTC_UNIX
+        printf("seconds: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(seconds_reg));
+        printf("minutes: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(minutes_reg));
+        printf("hours: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(hours_reg));
+        printf("day: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(dow_reg));
+        printf("date: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(date_reg));
+        printf("month: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(month_reg));
+        printf("year: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(year_reg));
+#endif // PRINT_INFO_GET_RTC_UNIX
 
         sec = bcd_to_uint8(seconds_reg & 0x7F);
         min = bcd_to_uint8(minutes_reg);
@@ -278,15 +278,15 @@ uint32_t rtc_get_unix()
         mon = bcd_to_uint8(month_reg & 0x7f);
         year = bcd_to_uint8(year_reg) + 2000;
 
-        if (print_info)
-        {
-            printf("seconds: %d\n", sec);
-            printf("minutes: %d\n", min);
-            printf("hours: %d\n", hour);
-            printf("date: %d\n", date);
-            printf("month: %d\n", mon);
-            printf("year: %d\n", year);
-        }
+#if PRINT_INFO_GET_RTC_UNIX
+        printf("seconds: %d\n", sec);
+        printf("minutes: %d\n", min);
+        printf("hours: %d\n", hour);
+        printf("date: %d\n", date);
+        printf("month: %d\n", mon);
+        printf("year: %d\n", year);
+#endif // PRINT_INFO_GET_RTC_UNIX
+
         struct tm my_time;
 
         // time values to set
@@ -350,17 +350,16 @@ esp_err_t rtc_set_date_time(const time_t *unix)
 
     year_byte = (((year_time % 100) / 10) << 4) | ((year_time % 100) % 10);
 
-    bool print_info = false;
+#define PRINT_INFO_SET_RTC_TIME 0
 
-    if (print_info)
-    {
-        printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(seconds_byte), seconds_time);
-        printf("minutes: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(minutes_byte), minutes_time);
-        printf("hours: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(hours_byte), hours_time);
-        printf("date: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(date_byte), date_time);
-        printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(month_byte), month_time);
-        printf("year: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(year_byte), year_time);
-    }
+#if PRINT_INFO_SET_RTC_TIME
+    printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(seconds_byte), seconds_time);
+    printf("minutes: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(minutes_byte), minutes_time);
+    printf("hours: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(hours_byte), hours_time);
+    printf("date: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(date_byte), date_time);
+    printf("seconds: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(month_byte), month_time);
+    printf("year: " BYTE_TO_BINARY_PATTERN "\t%d\n", BYTE_TO_BINARY(year_byte), year_time);
+#endif // PRINT_INFO_SET_RTC_TIME
 
     int ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
