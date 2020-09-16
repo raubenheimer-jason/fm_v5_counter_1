@@ -156,6 +156,8 @@ void app_main(void)
     // Time
     time_init();
 
+    // rtc_test();
+
     // WiFi
     wifi_init_sta();
 

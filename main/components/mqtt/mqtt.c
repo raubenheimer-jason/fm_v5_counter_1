@@ -3,6 +3,7 @@
 static char *getValueFromJson(const char *json_str, const uint32_t json_str_len, const char *key);
 static void firmware_update_check(const char *config_data, const int config_data_len);
 static esp_err_t firmware_update(const char *file_url, const char *certificate);
+static bool is_json_valid(const char *json, uint32_t json_len);
 
 char device_id[20];
 
@@ -81,9 +82,16 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
 
-        if (restart_required_flag == false)
+        if (is_json_valid(event->data, event->data_len) == true)
         {
-            firmware_update_check(event->data, event->data_len);
+            if (restart_required_flag == false)
+            {
+                firmware_update_check(event->data, event->data_len);
+            }
+        }
+        else
+        {
+            ESP_LOGE(TAG, "config data does not contain valid json");
         }
 
         break;
@@ -120,6 +128,24 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
     mqtt_event_handler_cb(event_data);
+}
+
+/**
+ * Basic check for if json is valid
+ * (or at least all the characters are probably there)
+ * 
+ * @param json = pointer to the json string
+ * @param json_len = length of json string (including \0)
+ */
+static bool is_json_valid(const char *json, uint32_t json_len)
+{
+    if (json[0] != '{' || json[json_len - 1] != '}')
+    {
+        ESP_LOGE(TAG, "error with json (not starting and ending in \"{}\", got %c and %c instead)", json[0], json[json_len - 1]);
+        return false;
+    }
+    ESP_LOGI(TAG, "valid json");
+    return true;
 }
 
 /**
