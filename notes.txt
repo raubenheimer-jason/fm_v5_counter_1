@@ -1,0 +1,8 @@
+OTA Updates:
+    
+    When the time comes to update the certificate (15 December 2021), we can have both
+    certificates here at the same time (one after the other in the same string, just
+    like the mqtt_primary_backup.pem certificates). 
+    We must just make sure to send an OTA update with the new certificate (as well as
+    the old one) before the old one expires. Thereafter we can send another OTA update
+    with only the new certificate (probably not necessary though).
