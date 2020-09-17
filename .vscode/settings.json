@@ -18,6 +18,7 @@
     "wifi.h": "c",
     "time.h": "c",
     "time_init.h": "c",
-    "cstddef": "cpp"
+    "cstddef": "cpp",
+    "mqtt.h": "c"
   }
 }

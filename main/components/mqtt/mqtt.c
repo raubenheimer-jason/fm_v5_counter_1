@@ -46,7 +46,8 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
         char *sub_topic_config = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/config") + 1); // Check for error allocating memory
         sub_topic_config[0] = '\0';
-        strcat(sub_topic_config, "/devices/");
+        // strcat(sub_topic_config, "/devices/");
+        strcpy(sub_topic_config, "/devices/");
         strcat(sub_topic_config, device_id);
         strcat(sub_topic_config, "/config");
 
@@ -54,6 +55,35 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
         free(sub_topic_config);
+
+        static bool published_state = false; // only publish the state on restart, not every time the device connects to mqtt (this happens at least every jwt refresh)
+
+        if (published_state == false)
+        {
+            ESP_LOGI(TAG, "publishing device state...");
+            char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
+            state_topic[0] = '\0';
+            // strcat(state_topic, "/devices/");
+            strcpy(state_topic, "/devices/");
+            strcat(state_topic, device_id);
+            strcat(state_topic, "/state");
+
+            char *state_buf = "test";
+
+            int32_t upload_res = esp_mqtt_client_publish(client, state_topic, state_buf, 0, 1, 0);
+
+            free(state_topic);
+
+            if (upload_res > 0)
+            {
+                ESP_LOGI(TAG, "state successfully published!!");
+                published_state = true; // make sure this doesn't happen again unless there is a restart
+            }
+            else
+            {
+                ESP_LOGE(TAG, "error publishing state, will try again next time mqtt connects");
+            }
+        }
 
         break;
     case MQTT_EVENT_DISCONNECTED:
