@@ -346,7 +346,8 @@ void status_framHighWaterMark(uint32_t num_messages)
 esp_err_t get_status_message_json(char *status_buf)
 {
 
-    int spinrtf_ret = sprintf(status_buf, "{\"bv\":%d,\"bcs\":%d,\"om\":%d,\"wd\":%d,\"wr\":%d,\"mue\":%d,\"mcre\":%d,\"ntpe\":%d,\"stue\":%d,\"rste\":%d,\"rre\":%d,\"fre\":%d,\"fwe\":%d,\"fae\":%d,\"fhw\":%d}",
+    int spinrtf_ret = sprintf(status_buf, "{\"firm_v\":%s,\"bv\":%d,\"bcs\":%d,\"om\":%d,\"wd\":%d,\"wr\":%d,\"mue\":%d,\"mcre\":%d,\"ntpe\":%d,\"stue\":%d,\"rste\":%d,\"rre\":%d,\"fre\":%d,\"fwe\":%d,\"fae\":%d,\"fhw\":%d}",
+                              CONFIG_FIRMWARE_VERSION,                          // Firm_v
                               dev_status.power.battery_voltage,                 // bv
                               dev_status.power.battery_charge_status,           // bcs
                               dev_status.power.on_mains,                        // om
@@ -378,6 +379,8 @@ esp_err_t get_status_message_json(char *status_buf)
 void status_printStatusStruct(void)
 {
     printf("*************** Status struct ***************\n");
+
+    printf("FIRMWARE VERSION: %s\n", CONFIG_FIRMWARE_VERSION);
 
     printf("power:\n");
     printf("\tbattery_voltage: %d\n", dev_status.power.battery_voltage);
