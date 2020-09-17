@@ -42,6 +42,8 @@
 // uint64_t i;
 // printf("\t\tt.addr: %" PRIu64 "\n", t.addr);
 
+static const uint32_t minimum_battery_voltage_allowed = 3100; // mV - if the battery voltage is below this threshold, there will be a delay before the device starts up. This is to prevent the constant restart on brownout if the batteries run flat.
+
 static const char *TAG = "APP_MAIN";
 
 xSemaphoreHandle status_struct_gatekeeper = NULL;
@@ -150,6 +152,16 @@ void app_main(void)
         ESP_LOGE(TAG, "gpio_setup_ret != ESP_OK");
     }
 
+    /*  If device is on battery and the voltage is below a threshold, delay before attempting startup
+        to help prevent continuous restarts after brownout when battery is flat
+    */
+    if (status_onMains() != 1 && get_battery_voltage() < minimum_battery_voltage_allowed)
+    {
+        ESP_LOGW(TAG, "status_onMains() != 1 && get_battery_voltage() < minimum_battery_voltage_allowed, delaying before attempted startup");
+        ESP_LOGW(TAG, "status_onMains() = %d, get_battery_voltage() = %d", status_onMains(), get_battery_voltage());
+        vTaskDelay(60000 / portTICK_PERIOD_MS);
+    }
+
     if (need_to_restart == true)
     {
         ESP_LOGE(TAG, "restarting in 10s");
@@ -159,6 +171,10 @@ void app_main(void)
 
     on_mains_flag = -1; // force the evaluation
     mains_flag_evaluation();
+    if (on_mains_flag == 0)
+    {
+        ESP_LOGW(TAG, "battery voltage = %d", get_battery_voltage());
+    }
 
     // Initial LED states
     if (on_mains_flag == 1) // only turn the LED on if device is on mains power
