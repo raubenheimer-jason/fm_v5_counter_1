@@ -201,10 +201,10 @@ bool jwt_update_check(void)
 
     while (now < CONFIG_LAST_KNOWN_UNIX)
     {
-        ESP_LOGW(TAG, "waiting for time to be updated before updating JWT");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        ESP_LOGW(TAG, "waiting for time to be updated before updating JWT (now = %ld)", now);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
         time(&now);
-        printf("now: %ld\n", now);
+        // printf("now: %ld\n", now);
     }
 
     if ((last_updated + ((float)CONFIG_JWT_EXP - (0.1 * CONFIG_JWT_EXP))) < now)

@@ -91,7 +91,7 @@ menu "Example Configuration"
 
     config LAST_KNOWN_UNIX
         int
-        default 2
+        default 1600328461
     
     config JWT_EXP
         int

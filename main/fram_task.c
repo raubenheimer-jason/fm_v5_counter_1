@@ -43,7 +43,7 @@ void mains_flag_evaluation(void)
 
 void Fram_Task_Code(void *pvParameters)
 {
-    static const char *TAG = "APP_MAIN [FRAM_TASK]";
+    // static const char *TAG = "APP_MAIN [FRAM_TASK]";
 
     TickType_t fram_store_ticks = 0; // dont wait first time, there might be a backlog and the chance of a new message in the queue right on startup is unlikely
 
@@ -139,11 +139,22 @@ void Fram_Task_Code(void *pvParameters)
             }
             else
             {
-                ESP_LOGE(TAG, "error in data read from fram");
+                ESP_LOGE(TAG, "error in data read from fram. Telemetry unix = %d", (uint32_t)unix_time);
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
                     status_incrementFramReadErrors();
                     xSemaphoreGive(status_struct_gatekeeper);
+                }
+
+                if (delete_last_read_telemetry(telemetry_to_upload) == true)
+                {
+                    ESP_LOGI(TAG, "successfully deleted error telemetry from fram");
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "unable to resolve fram error, reset fram");
+                    // RESET FRAM HERE
+                    fram_reset();
                 }
             }
             fram_store_ticks = short_ticks / portTICK_PERIOD_MS; // there might be a backlog so dont wait for new telemetry for long

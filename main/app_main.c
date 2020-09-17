@@ -12,13 +12,13 @@
 
     -   Check if sensor could see reflector or not when it gets a 0 reaading
 
-    -   Publish state to GCP IOT Core?
+    -   -- DONE -- Publish state to GCP IOT Core?
 
     -   Test flash encryption etc.
 
-    -   Issue with RTC??    unix from rtc: 1600215542
-                            unix from system time: 1600172342
-                            W (25208528) NTP: RTC time needs to be updated
+    -   -- DONE -- Issue with RTC??     unix from rtc: 1600215542
+                                        unix from system time: 1600172342
+                                        W (25208528) NTP: RTC time needs to be updated
 */
 // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
@@ -103,6 +103,8 @@ void app_main(void)
     ESP_LOGI(TAG, "***************************************************************************************************************************");
     ESP_LOGI(TAG, "                                                FIRMWARE VERSION:  %s", CONFIG_FIRMWARE_VERSION);
     ESP_LOGI(TAG, "***************************************************************************************************************************");
+
+    // vTaskDelay(10000 / portTICK_PERIOD_MS);
 
     // printf("sizeof(time_t): %d\n", sizeof(time_t));
 

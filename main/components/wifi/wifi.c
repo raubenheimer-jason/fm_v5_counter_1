@@ -27,10 +27,38 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
             gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
         }
 
-        ESP_LOGI(TAG, "** retry to connect to the AP **");
+        // printf("ssid: %s\n", ssid);
+        // printf("ssid_len: %d\n", arg.ssid_len);
+        // printf("bssid: %s\n", arg.bssid);
+        // printf("reason: %d\n", arg.reason);
 
+        ESP_LOGI(TAG, "** retry to connect to the AP **");
+        // vTaskDelay(5000 / portTICK_PERIOD_MS);
+        // esp_err_t con_res = esp_wifi_connect();
         esp_wifi_connect();
+
+        // if (con_res == ESP_OK)
+        // {
+        //     ESP_LOGI(TAG, "con_res == ESP_OK");
+        // }
+        // else if (con_res == ESP_ERR_WIFI_NOT_INIT)
+        // {
+        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_NOT_INIT (WiFi is not initialized by esp_wifi_init)");
+        // }
+        // else if (con_res == ESP_ERR_WIFI_NOT_STARTED)
+        // {
+        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_NOT_STARTED (WiFi is not started by esp_wifi_start)");
+        // }
+        // else if (con_res == ESP_ERR_WIFI_CONN)
+        // {
+        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_CONN (WiFi internal error, station or soft-AP control block wrong)");
+        // }
+        // else if (con_res == ESP_ERR_WIFI_SSID)
+        // {
+        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_SSID (SSID of AP which station connects is invalid)");
+        // }
     }
+
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         gpio_set_level(CONFIG_WIFI_LED_PIN, 0);
@@ -92,6 +120,17 @@ void wifi_init_sta(void)
              * However these modes are deprecated and not advisable to be used. Incase your Access point
              * doesn't support WPA2, these mode can be enabled by commenting below line */
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+            // .threshold.rssi = -100,
+
+            .scan_method = WIFI_ALL_CHANNEL_SCAN,
+
+            .bssid_set = false,
+
+            .channel = 0,
+
+            .listen_interval = 0,
+
+            .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
 
             .pmf_cfg = {
                 .capable = true,

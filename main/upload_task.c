@@ -19,7 +19,8 @@ int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
  * Only call function from UPLOAD TASK
  * Used before the restart (if restar_required_flag = true)
  */
-void stop_wifi_and_mqtt(esp_mqtt_client_handle_t client)
+// void stop_wifi_and_mqtt(esp_mqtt_client_handle_t client)
+void stop_mqtt(esp_mqtt_client_handle_t client)
 {
     ESP_LOGW(TAG, "disconnecting mqtt");
     esp_mqtt_client_disconnect(client);
@@ -27,8 +28,8 @@ void stop_wifi_and_mqtt(esp_mqtt_client_handle_t client)
     ESP_LOGW(TAG, "stopping mqtt");
     esp_mqtt_client_stop(client);
 
-    ESP_LOGW(TAG, "disconnecting wifi");
-    esp_wifi_disconnect();
+    // ESP_LOGW(TAG, "disconnecting wifi");
+    // esp_wifi_disconnect();
 }
 
 /**
@@ -42,7 +43,7 @@ void increment_upload_error_count(esp_mqtt_client_handle_t client)
     if (upload_error_count > max_upload_errors)
     {
         ESP_LOGE(TAG, "upload_error_count > max_upload_errors, will begin the restart process");
-        stop_wifi_and_mqtt(client);
+        stop_mqtt(client);
         ESP_LOGI(TAG, "UPLOAD TASK shutdown complete, waiting for FRAM TASK");
         restart_required_flag = true;
         for (;;)
@@ -74,6 +75,18 @@ void Upload_Task_Code(void *pvParameters)
 
     time_t now;
     time(&now);
+
+    // this is handled in jwt_update_check()
+    // if (now < CONFIG_LAST_KNOWN_UNIX)
+    // {
+    //     ESP_LOGW(TAG, "waiting for time to be updated before creating JWT... (time = %d)", (uint32_t)now);
+    //     while (now < CONFIG_LAST_KNOWN_UNIX)
+    //     {
+    //         vTaskDelay(5000 / portTICK_PERIOD_MS);
+    //         time(&now);
+    //     }
+    //     ESP_LOGI(TAG, "system time updated (now = %d)", (uint32_t)now);
+    // }
 
     char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
 
@@ -387,11 +400,11 @@ void Upload_Task_Code(void *pvParameters)
 
                 // char *state_buf = "test";
 
-                int32_t upload_res = esp_mqtt_client_publish(client, state_topic, status_message, 0, 1, 0);
+                int32_t state_upload_res = esp_mqtt_client_publish(client, state_topic, status_message, 0, 1, 0);
 
                 free(state_topic);
 
-                if (upload_res > 0)
+                if (state_upload_res > 0)
                 {
                     ESP_LOGI(TAG, "state successfully published!!");
                     published_state = true; // make sure this doesn't happen again unless there is a restart
