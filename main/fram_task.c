@@ -52,6 +52,8 @@ void Fram_Task_Code(void *pvParameters)
 
     for (;;)
     {
+        // ESP_LOGI(TAG, "free heap end: %d  (min fh: %d)", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+
         mains_flag_evaluation();
 
         uint64_t telemetry_to_store = 0;

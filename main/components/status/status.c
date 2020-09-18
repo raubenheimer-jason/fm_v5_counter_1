@@ -363,11 +363,13 @@ void status_framHighWaterMark(uint32_t num_messages)
 esp_err_t get_status_message_json(char *status_buf)
 {
 
-    int spinrtf_ret = sprintf(status_buf, "{\"firm_v\":%s,\"bv\":%d,\"bcs\":%d,\"om\":%d,\"wd\":%d,\"wr\":%d,\"mue\":%d,\"mcre\":%d,\"ntpe\":%d,\"stue\":%d,\"rste\":%d,\"rre\":%d,\"fre\":%d,\"fwe\":%d,\"fae\":%d,\"fhw\":%d}",
+    int spinrtf_ret = sprintf(status_buf, "{\"firm_v\":%s,\"bv\":%d,\"bcs\":%d,\"om\":%d,\"fh\":%d,\"mfh\":%d,\"wd\":%d,\"wr\":%d,\"mue\":%d,\"mcre\":%d,\"ntpe\":%d,\"stue\":%d,\"rste\":%d,\"rre\":%d,\"fre\":%d,\"fwe\":%d,\"fae\":%d,\"fhw\":%d}",
                               CONFIG_FIRMWARE_VERSION,                          // Firm_v
                               dev_status.power.battery_voltage,                 // bv
                               dev_status.power.battery_charge_status,           // bcs
                               dev_status.power.on_mains,                        // om
+                              esp_get_free_heap_size(),                         // fh
+                              esp_get_minimum_free_heap_size(),                 // mfh
                               dev_status.wifi.disconnections,                   // wd
                               dev_status.wifi.rssi_low_mark,                    // wr
                               dev_status.mqtt.upload_errors,                    // mue
