@@ -133,6 +133,21 @@ void Upload_Task_Code(void *pvParameters)
     strcat(telemetry_topic, "/events");
     printf("len = %d, telemetry_topic: %s\n", strlen(telemetry_topic), telemetry_topic);
 
+    // Won't need to free this as it's used throughout the life of the program
+    char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
+    strcpy(status_telemetry_topic, telemetry_topic);
+    strcat(status_telemetry_topic, "/");
+    strcat(status_telemetry_topic, CONFIG_STATUS_SUBFOLDER);
+    printf("status_telemetry_topic: %s\n", status_telemetry_topic);
+
+    // Won't need to free this as it's used throughout the life of the program
+    char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
+    state_topic[0] = '\0';
+    strcpy(state_topic, "/devices/");
+    strcat(state_topic, device_id);
+    strcat(state_topic, "/state");
+    printf("state_topic: %s\n", state_topic);
+
     // ============ MQTT ============
 
     bool need_to_upload_flag = false;
@@ -147,6 +162,8 @@ void Upload_Task_Code(void *pvParameters)
     for (;;)
     {
         // mains_flag_evaluation();
+
+        printf("free heap start: %d\n", esp_get_free_heap_size());
 
         if (mqtt_connected_flag == 0)
         {
@@ -358,10 +375,10 @@ void Upload_Task_Code(void *pvParameters)
             printf("status message:\n");
             printf("%s\n", status_message);
 
-            char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
-            strcpy(status_telemetry_topic, telemetry_topic);
-            strcat(status_telemetry_topic, "/");
-            strcat(status_telemetry_topic, CONFIG_STATUS_SUBFOLDER);
+            // char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
+            // strcpy(status_telemetry_topic, telemetry_topic);
+            // strcat(status_telemetry_topic, "/");
+            // strcat(status_telemetry_topic, CONFIG_STATUS_SUBFOLDER);
             printf("status_telemetry_topic: %s\n", status_telemetry_topic);
             upload_res = esp_mqtt_client_publish(client, status_telemetry_topic, status_message, 0, 1, 0); // status-telemetry-1
 
@@ -386,35 +403,37 @@ void Upload_Task_Code(void *pvParameters)
 
             // ---------------- PUBLISH STATE (only first time microcontroller turns on) ----------------
 
-            static bool published_state = false; // only publish the state on restart, not every time the device connects to mqtt (this happens at least every jwt refresh)
+            // static bool published_state = false; // only publish the state on restart, not every time the device connects to mqtt (this happens at least every jwt refresh)
 
-            if (published_state == false)
+            // if (published_state == false)
+            // {
+            ESP_LOGI(TAG, "publishing device state...");
+            // char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
+            // state_topic[0] = '\0';
+            // strcpy(state_topic, "/devices/");
+            // strcat(state_topic, device_id);
+            // strcat(state_topic, "/state");
+
+            // char *state_buf = "test";
+            printf("state_topic: %s\n", state_topic);
+
+            int32_t state_upload_res = esp_mqtt_client_publish(client, state_topic, status_message, 0, 1, 0);
+
+            // free(state_topic);
+
+            if (state_upload_res > 0)
             {
-                ESP_LOGI(TAG, "publishing device state...");
-                char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
-                state_topic[0] = '\0';
-                // strcat(state_topic, "/devices/");
-                strcpy(state_topic, "/devices/");
-                strcat(state_topic, device_id);
-                strcat(state_topic, "/state");
-
-                // char *state_buf = "test";
-
-                int32_t state_upload_res = esp_mqtt_client_publish(client, state_topic, status_message, 0, 1, 0);
-
-                free(state_topic);
-
-                if (state_upload_res > 0)
-                {
-                    ESP_LOGI(TAG, "state successfully published!!");
-                    published_state = true; // make sure this doesn't happen again unless there is a restart
-                }
-                else
-                {
-                    ESP_LOGE(TAG, "error publishing state, will try again next time device status gets published");
-                }
+                ESP_LOGI(TAG, "state successfully published!!");
+                // published_state = true; // make sure this doesn't happen again unless there is a restart
             }
+            else
+            {
+                ESP_LOGE(TAG, "error publishing state, will try again next time device status gets published");
+            }
+            // }
         }
+
+        printf("free heap end: %d  (min fh: %d)\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
 
         uint64_t dummy_buf;
         xQueuePeek(upload_queue, &dummy_buf, 90000 / portTICK_PERIOD_MS); // like a delay but the delay will end if there is a new message
