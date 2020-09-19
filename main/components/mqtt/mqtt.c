@@ -103,7 +103,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         {
             gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
         }
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        ESP_LOGD(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");

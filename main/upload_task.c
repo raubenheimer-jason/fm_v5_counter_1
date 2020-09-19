@@ -163,7 +163,7 @@ void Upload_Task_Code(void *pvParameters)
     {
         // mains_flag_evaluation();
 
-        printf("free heap start: %d\n", esp_get_free_heap_size());
+        ESP_LOGD(TAG, "free heap start: %d", esp_get_free_heap_size());
 
         if (mqtt_connected_flag == 0)
         {
@@ -291,7 +291,7 @@ void Upload_Task_Code(void *pvParameters)
             char telemetry_buf[40]; // {"t":1596255206,"v":4294967295} --> 31 characters
             snprintf(telemetry_buf, 40, "{\"t\":%d,\"v\":%d}", (int)unix_time, (int)count);
 
-            printf("%s\n", telemetry_buf);
+            ESP_LOGD(TAG, "%s", telemetry_buf);
 
             // ============ MQTT ============ START
 
@@ -311,7 +311,7 @@ void Upload_Task_Code(void *pvParameters)
 
                 uint32_t total = success_count + error_count;
                 float success = ((float)success_count / total) * 100;
-                ESP_LOGI(TAG, "-->> PUBLISH SUCCESS!!!!  -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)", success, success_count, total, success_count, error_count, total);
+                ESP_LOGI(TAG, "%s   -->> PUBLISH SUCCESS!!!!  -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d) -- min fh: %d", telemetry_buf, success, success_count, total, success_count, error_count, total, esp_get_minimum_free_heap_size());
 
                 previously_uploaded_telemetry = telemetry_to_upload;
                 need_to_upload_flag = false;
@@ -334,7 +334,7 @@ void Upload_Task_Code(void *pvParameters)
                 uint32_t total = success_count + error_count;
                 float success = ((float)success_count / total) * 100;
                 // printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
-                ESP_LOGE(TAG, "UPLOAD SENDING FAILED !!! -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)", success, success_count, total, success_count, error_count, total);
+                ESP_LOGE(TAG, "%s    UPLOAD SENDING FAILED !!! -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d) -- min fh: %d  **********************", telemetry_buf, success, success_count, total, success_count, error_count, total, esp_get_minimum_free_heap_size());
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
                     status_incrementMqttUploadErrors();
@@ -367,13 +367,13 @@ void Upload_Task_Code(void *pvParameters)
             int32_t upload_res = 0;
             if (xSemaphoreTake(status_struct_gatekeeper, 100))
             {
-                status_printStatusStruct();
+                // status_printStatusStruct();
                 get_status_message_json(status_message);
 
                 xSemaphoreGive(status_struct_gatekeeper);
             }
-            printf("status message:\n");
-            printf("%s\n", status_message);
+            printf("status message: %s\n", status_message);
+            // printf("%s\n", status_message);
 
             // char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
             // strcpy(status_telemetry_topic, telemetry_topic);
@@ -433,7 +433,8 @@ void Upload_Task_Code(void *pvParameters)
             // }
         }
 
-        printf("free heap end: %d  (min fh: %d)\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+        // printf("free heap end: %d  (min fh: %d)\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+        ESP_LOGD(TAG, "min fh: %d\n", esp_get_minimum_free_heap_size());
 
         uint64_t dummy_buf;
         xQueuePeek(upload_queue, &dummy_buf, 90000 / portTICK_PERIOD_MS); // like a delay but the delay will end if there is a new message

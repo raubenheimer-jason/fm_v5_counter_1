@@ -297,7 +297,7 @@ uint32_t rtc_get_unix()
     if (ret == ESP_OK)
     {
 
-#define PRINT_INFO_GET_RTC_UNIX 1
+#define PRINT_INFO_GET_RTC_UNIX 0
 
 #if PRINT_INFO_GET_RTC_UNIX
         printf("seconds: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(seconds_reg));
@@ -400,7 +400,7 @@ esp_err_t rtc_set_date_time(const time_t *unix)
 
     year_byte = (((year_time % 100) / 10) << 4) | ((year_time % 100) % 10);
 
-#define PRINT_INFO_SET_RTC_TIME 1
+#define PRINT_INFO_SET_RTC_TIME 0
 
 #if PRINT_INFO_SET_RTC_TIME
     printf("--------------------------------- setting rtc date and time ---------------------------------\n");

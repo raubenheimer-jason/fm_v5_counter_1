@@ -19,6 +19,8 @@
     -   -- DONE -- Issue with RTC??     unix from rtc: 1600215542
                                         unix from system time: 1600172342
                                         W (25208528) NTP: RTC time needs to be updated
+
+    -   Send config "restart" instruction???
 */
 // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
