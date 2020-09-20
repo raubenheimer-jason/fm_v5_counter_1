@@ -1,5 +1,7 @@
 #include "jwt.h"
 
+static const char *TAG = "JWT";
+
 size_t b64_encoded_size(size_t inlen)
 {
     size_t ret;
@@ -27,6 +29,13 @@ char *b64_encode(const unsigned char *in, size_t len)
 
     elen = b64_encoded_size(len);
     out = malloc(elen + 1);
+
+    if (out == NULL)
+    {
+        ESP_LOGE(TAG, "[b64_encode] out == NULL");
+        return NULL;
+    }
+
     out[elen] = '\0';
 
     for (i = 0, j = 0; i < len; i += 3, j += 4)
@@ -120,6 +129,12 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
 
     char *jwt_claim = (char *)malloc(jwt_claim_len + 1); // + 1 for \0 // MUST FREE THIS
 
+    if (jwt_claim == NULL)
+    {
+        ESP_LOGE(TAG, "[createJwt] jwt_claim == NULL");
+        return NULL;
+    }
+
     strcpy(jwt_claim, "{\"aud\":\"");
     strcat(jwt_claim, project_id);
     strcat(jwt_claim, "\",\"iat\":");
@@ -144,6 +159,12 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
     size_t jwt_len = strlen(enc_header) + strlen(enc_claim) + 2;
 
     char *header_payload_base64 = (char *)malloc(jwt_len); // "header_length" + "." + "claims_length" + "\0"
+
+    if (header_payload_base64 == NULL)
+    {
+        ESP_LOGE(TAG, "[createJwt] header_payload_base64 == NULL");
+        return NULL;
+    }
 
     strcpy(header_payload_base64, enc_header);
     strcat(header_payload_base64, ".");
@@ -203,6 +224,12 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
     comp_len += 1; // for the \0
 
     char *comp_jwt = (char *)malloc(comp_len + 5);
+
+    if (comp_jwt == NULL)
+    {
+        ESP_LOGE(TAG, "comp_jwt == NULL");
+        return NULL;
+    }
 
     strcpy(comp_jwt, header_payload_base64);
     free(header_payload_base64);

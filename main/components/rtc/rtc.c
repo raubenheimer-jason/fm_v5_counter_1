@@ -1,44 +1,5 @@
 // DS3231
 
-// ERROR
-/*
-I (3634808) NTP: ************* Notification of a time synchronization event *************
-seconds: 00010000
-minutes: 00001000
-hours: 0111 0010
-day: 00000111
-date: 00010110
-month: 00001001
-year: 00100000
-seconds: 10
-minutes: 8
-hours: 24
-date: 16
-month: 9
-year: 2020
-unix from rtc: 1600301290
-unix from system time: 1600258090
-E (3634828) NTP: -------------------------------------------- RTC time needs to be updated --------------------------------------------
-I (3634838) RTC: update rtc time success!
-I (3634848) NTP: RTC updated from system time (NTP)
-seconds: 00010000
-minutes: 00001000
-hours: 01010010
-day: 00000111
-date: 00010110
-month: 00001001
-year: 00100000
-seconds: 10
-minutes: 8
-hours: 12
-date: 16
-month: 9
-year: 2020
-unix from rtc after update: 1600258090
-{"t":1600258140,"v":0}
-
-*/
-
 #include "rtc.h"
 
 // Static prototypes
@@ -213,12 +174,10 @@ uint32_t rtc_get_unix()
 {
     // First check the Oscillator Stop Flag (BIT 7 of the Status Regster)
     uint8_t status_register_value = rtc_read_reg(STATUS_REGISTER_ADDR);
-    // printf("status_register_value: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
 
     if ((status_register_value >> 7) == 1)
     {
         ESP_LOGW(TAG, "Oscillator Stop Flag == 1, time may be invalid");
-        // TODO: Return 0 -------------------------------------------------------------------------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!
         return 0;
     }
 
@@ -364,15 +323,6 @@ esp_err_t rtc_set_date_time(const time_t *unix)
     uint8_t month_time = my_time.tm_mon + 1;
     uint8_t year_time = my_time.tm_year;
 
-    // // byte values to write to registers
-    // uint8_t seconds_byte = 0b0000111;
-    // uint8_t minutes_byte = 0b0001111;
-    // uint8_t hours_byte = 0b0100111;
-    // uint8_t dow_byte = 0b00000111; // not using this
-    // uint8_t date_byte = 0b00001111;
-    // uint8_t month_byte = 0b00001111;
-    // uint8_t year_byte = 0b00001111;
-
     // byte values to write to registers
     uint8_t seconds_byte = 0;
     uint8_t minutes_byte = 0;
@@ -457,12 +407,8 @@ esp_err_t rtc_set_date_time(const time_t *unix)
         // Status register
         uint8_t status_register_value = rtc_read_reg(STATUS_REGISTER_ADDR);
 
-        // printf("--------------->>  old status register: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
-
         // clear OSF (BIT 7)
         status_register_value &= ~((uint8_t)1 << 7);
-
-        // printf("--------------->>  new status register: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(status_register_value));
 
         // write new register value
         rtc_write_reg(STATUS_REGISTER_ADDR, status_register_value);

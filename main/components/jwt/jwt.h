@@ -4,6 +4,8 @@
 
 #include <stdlib.h> // For malloc
 
+#include "esp_log.h"
+
 size_t b64_encoded_size(size_t inlen);
 
 // const char b64chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

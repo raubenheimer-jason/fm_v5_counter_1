@@ -10,14 +10,14 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "WIFI";
 
-static const uint32_t max_disconnected_count = 120; // maximum number of times the wifi doesnt connect (consecutively) before restarting the device
+static const uint32_t wifif_max_disconnected_count = 120; // maximum number of times the wifi doesnt connect (consecutively) before restarting the device
 
 // Static prototypes
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
-    static uint32_t disconnected_count = 0;
+    static uint32_t wifi_disconnected_count = 0;
 
     printf("_________________________ EVENT HANDLER _________________________\n");
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
@@ -26,11 +26,12 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        disconnected_count++;
+        wifi_disconnected_count++;
+        ESP_LOGE(TAG, "** retry to connect to the AP ** (disconnected_count = %d)", wifi_disconnected_count);
 
-        if (disconnected_count > max_disconnected_count)
+        if (wifi_disconnected_count > wifif_max_disconnected_count)
         {
-            ESP_LOGE(TAG, "disconnected_count > max_disconnected_count, setting restart_required_flag = true");
+            ESP_LOGE(TAG, "disconnected_count > wifif_max_disconnected_count, setting restart_required_flag = true  (wifif_max_disconnected_count = %d)", wifif_max_disconnected_count);
             restart_required_flag = true;
         }
 
@@ -39,43 +40,14 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
             gpio_set_level(CONFIG_WIFI_LED_PIN, 1);
         }
 
-        // printf("ssid: %s\n", ssid);
-        // printf("ssid_len: %d\n", arg.ssid_len);
-        // printf("bssid: %s\n", arg.bssid);
-        // printf("reason: %d\n", arg.reason);
-
-        ESP_LOGI(TAG, "** retry to connect to the AP ** (disconnected_count = %d)", disconnected_count);
-        // vTaskDelay(5000 / portTICK_PERIOD_MS);
-        // esp_err_t con_res = esp_wifi_connect();
         esp_wifi_connect();
-
-        // if (con_res == ESP_OK)
-        // {
-        //     ESP_LOGI(TAG, "con_res == ESP_OK");
-        // }
-        // else if (con_res == ESP_ERR_WIFI_NOT_INIT)
-        // {
-        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_NOT_INIT (WiFi is not initialized by esp_wifi_init)");
-        // }
-        // else if (con_res == ESP_ERR_WIFI_NOT_STARTED)
-        // {
-        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_NOT_STARTED (WiFi is not started by esp_wifi_start)");
-        // }
-        // else if (con_res == ESP_ERR_WIFI_CONN)
-        // {
-        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_CONN (WiFi internal error, station or soft-AP control block wrong)");
-        // }
-        // else if (con_res == ESP_ERR_WIFI_SSID)
-        // {
-        //     ESP_LOGE(TAG, "con_res == ESP_ERR_WIFI_SSID (SSID of AP which station connects is invalid)");
-        // }
     }
 
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         gpio_set_level(CONFIG_WIFI_LED_PIN, 0);
 
-        disconnected_count = 0; // reset disconnected count when wifi connects
+        wifi_disconnected_count = 0; // reset disconnected count when wifi connects
 
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));

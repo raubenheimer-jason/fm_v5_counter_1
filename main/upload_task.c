@@ -64,6 +64,29 @@ void decrement_upload_error_count(void)
     }
 }
 
+/**
+ * Make sure memory was allocated for the pointer
+ */
+void char_malloc_checker(const char *ptr, const char *ptr_name)
+{
+    if (ptr == NULL)
+    {
+        ESP_LOGE(TAG, "%s == NULL, setting restart_required_flag = true", ptr_name);
+        restart_required_flag = true;
+        uint8_t count = 0;
+        uint8_t max_count = 100;
+        for (;;)
+        {
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            if (count > max_count)
+            {
+                ESP_LOGE(TAG, "restart still hasn't occured, forcing restart...");
+                esp_restart();
+            }
+        }
+    }
+}
+
 // // ====================================================== MQTT
 
 void Upload_Task_Code(void *pvParameters)
@@ -76,25 +99,43 @@ void Upload_Task_Code(void *pvParameters)
     time_t now;
     time(&now);
 
-    // this is handled in jwt_update_check()
-    // if (now < CONFIG_LAST_KNOWN_UNIX)
-    // {
-    //     ESP_LOGW(TAG, "waiting for time to be updated before creating JWT... (time = %d)", (uint32_t)now);
-    //     while (now < CONFIG_LAST_KNOWN_UNIX)
-    //     {
-    //         vTaskDelay(5000 / portTICK_PERIOD_MS);
-    //         time(&now);
-    //     }
-    //     ESP_LOGI(TAG, "system time updated (now = %d)", (uint32_t)now);
-    // }
+    // this is handled in jwt_update_check() <-- must have it before createJwt in case
+    if (now < CONFIG_LAST_KNOWN_UNIX)
+    {
+        ESP_LOGW(TAG, "waiting for time to be updated before creating JWT... (time = %d)", (uint32_t)now);
+        while (now < CONFIG_LAST_KNOWN_UNIX)
+        {
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            time(&now);
+        }
+        ESP_LOGI(TAG, "system time updated (now = %d)", (uint32_t)now);
+    }
 
     char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+    char_malloc_checker(jwt, "jwt");
 
-    printf("jwt: %s\n", jwt);
+    ESP_LOGI(TAG, "jwt: %s", jwt);
 
     // Check for error allocating memory
     // Won't need to free this as it's used throughout the life of the program
     char *client_id = (char *)malloc(strlen("projects/") + strlen(CONFIG_GCP_PROJECT_ID) + strlen("/locations/") + strlen(CONFIG_GCP_LOCATION) + strlen("/registries/") + strlen(CONFIG_GCP_REGISTRY) + strlen("/devices/") + strlen(device_id) + 1);
+    char_malloc_checker(client_id, "client_id");
+    // if (client_id == NULL)
+    // {
+    //     ESP_LOGE(TAG, "client_id == NULL, setting restart_required_flag = true");
+    //     restart_required_flag = true;
+    //     uint8_t count = 0;
+    //     uint8_t max_count = 100;
+    //     for (;;)
+    //     {
+    //         vTaskDelay(5000 / portTICK_PERIOD_MS);
+    //         if (count > max_count)
+    //         {
+    //             ESP_LOGE(TAG, "restart still hasn't occured, forcing restart...");
+    //             esp_restart();
+    //         }
+    //     }
+    // }
     client_id[0] = '\0';
     strcat(client_id, "projects/"); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
     strcat(client_id, CONFIG_GCP_PROJECT_ID);
@@ -104,7 +145,7 @@ void Upload_Task_Code(void *pvParameters)
     strcat(client_id, CONFIG_GCP_REGISTRY);
     strcat(client_id, "/devices/");
     strcat(client_id, device_id);
-    printf("len = %d, client_id: %s\n", strlen(client_id), client_id);
+    ESP_LOGI(TAG, "len = %d, client_id: %s\n", strlen(client_id), client_id); // len = 91, client_id: projects/fm-development-1/locations/us-central1/registries/counter-1/devices/C-7CDFA1015100
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_GCP_URI,   // "mqtts://mqtt.2030.ltsapis.goog:8883"
@@ -127,26 +168,29 @@ void Upload_Task_Code(void *pvParameters)
 
     // Won't need to free this as it's used throughout the life of the program
     char *telemetry_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
+    char_malloc_checker(telemetry_topic, "telemetry_topic");
     telemetry_topic[0] = '\0';
     strcat(telemetry_topic, "/devices/"); // "/devices/new-test-device/events"
     strcat(telemetry_topic, device_id);
     strcat(telemetry_topic, "/events");
-    printf("len = %d, telemetry_topic: %s\n", strlen(telemetry_topic), telemetry_topic);
+    ESP_LOGI(TAG, "len = %d, telemetry_topic: %s", strlen(telemetry_topic), telemetry_topic); // len = 30, telemetry_topic: /devices/C-7CDFA1015100/events
 
     // Won't need to free this as it's used throughout the life of the program
     char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
+    char_malloc_checker(status_telemetry_topic, "status_telemetry_topic");
     strcpy(status_telemetry_topic, telemetry_topic);
     strcat(status_telemetry_topic, "/");
     strcat(status_telemetry_topic, CONFIG_STATUS_SUBFOLDER);
-    printf("status_telemetry_topic: %s\n", status_telemetry_topic);
+    ESP_LOGI(TAG, "status_telemetry_topic: %s", status_telemetry_topic); // status_telemetry_topic: /devices/C-7CDFA1015100/events/status-telemetry-1
 
     // Won't need to free this as it's used throughout the life of the program
     char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
+    char_malloc_checker(state_topic, "state_topic");
     state_topic[0] = '\0';
     strcpy(state_topic, "/devices/");
     strcat(state_topic, device_id);
     strcat(state_topic, "/state");
-    printf("state_topic: %s\n", state_topic);
+    ESP_LOGI(TAG, "state_topic: %s", state_topic); // state_topic: /devices/C-7CDFA1015100/state
 
     // ============ MQTT ============
 
@@ -157,12 +201,8 @@ void Upload_Task_Code(void *pvParameters)
     uint32_t success_count = 0;
     uint32_t error_count = 0; // just for displaying to the console
 
-    // int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
-
     for (;;)
     {
-        // mains_flag_evaluation();
-
         ESP_LOGD(TAG, "free heap start: %d", esp_get_free_heap_size());
 
         if (mqtt_connected_flag == 0)
@@ -209,11 +249,12 @@ void Upload_Task_Code(void *pvParameters)
             free(jwt); // Free the old jwt pointer
             time(&now);
             jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
-            ESP_LOGI(TAG, "updated JWT, now: %d", (uint32_t)now);
+            char_malloc_checker(jwt, "jwt");
+            ESP_LOGD(TAG, "updated JWT, now: %d", (uint32_t)now);
             esp_err_t stop_ret = esp_mqtt_client_stop(client);
             if (stop_ret == ESP_OK)
             {
-                ESP_LOGI(TAG, "mqtt stop successful");
+                ESP_LOGD(TAG, "mqtt stop successful");
 
                 mqtt_connected_flag = 0;
 
@@ -231,7 +272,7 @@ void Upload_Task_Code(void *pvParameters)
                 esp_err_t start_ret = esp_mqtt_client_start(client);
                 if (start_ret == ESP_OK)
                 {
-                    ESP_LOGI(TAG, "mqtt start successful");
+                    ESP_LOGD(TAG, "mqtt start successful");
                 }
                 else
                 {
@@ -289,7 +330,14 @@ void Upload_Task_Code(void *pvParameters)
             // Send telemetry to GCP here
 
             char telemetry_buf[40]; // {"t":1596255206,"v":4294967295} --> 31 characters
-            snprintf(telemetry_buf, 40, "{\"t\":%d,\"v\":%d}", (int)unix_time, (int)count);
+            // snprintf(telemetry_buf, 40, "{\"t\":%d,\"v\":%d}", (int)unix_time, (int)count);
+            snprintf(telemetry_buf, 40, "{\"t\":%d,\"v\":%d}", unix_time, count);
+
+            // uint32_t telemetry_buf_size = strlen("{\"t\":4294967295,\"v\":4294967295}") + 1; // 4294967295 = uint32_t max value, +1 for \0
+            // char *telemetry_buf = (char *)malloc(telemetry_buf_size);
+            // char_malloc_checker(telemetry_buf, "telemetry_buf");
+            // telemetry_buf[0] = '\0';
+            // snprintf(telemetry_buf, telemetry_buf_size, "{\"t\":%d,\"v\":%d}", unix_time, count);
 
             ESP_LOGD(TAG, "%s", telemetry_buf);
 
@@ -311,7 +359,7 @@ void Upload_Task_Code(void *pvParameters)
 
                 uint32_t total = success_count + error_count;
                 float success = ((float)success_count / total) * 100;
-                ESP_LOGI(TAG, "%s   -->> PUBLISH SUCCESS!!!!  -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d) -- min fh: %d", telemetry_buf, success, success_count, total, success_count, error_count, total, esp_get_minimum_free_heap_size());
+                ESP_LOGI(TAG, "%s   -->> PUBLISH SUCCESS!!!!  -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d) -- fh: %d  -- min fh: %d", telemetry_buf, success, success_count, total, success_count, error_count, total, esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
 
                 previously_uploaded_telemetry = telemetry_to_upload;
                 need_to_upload_flag = false;
@@ -333,8 +381,7 @@ void Upload_Task_Code(void *pvParameters)
                 error_count++;                        // just for display
                 uint32_t total = success_count + error_count;
                 float success = ((float)success_count / total) * 100;
-                // printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
-                ESP_LOGE(TAG, "%s    UPLOAD SENDING FAILED !!! -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d) -- min fh: %d  **********************", telemetry_buf, success, success_count, total, success_count, error_count, total, esp_get_minimum_free_heap_size());
+                ESP_LOGE(TAG, "%s    UPLOAD SENDING FAILED !!! -- > success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d) -- fh: %d  -- min fh: %d  **********************", telemetry_buf, success, success_count, total, success_count, error_count, total, esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
                     status_incrementMqttUploadErrors();
@@ -342,17 +389,13 @@ void Upload_Task_Code(void *pvParameters)
                 }
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
-
-            // uint32_t total = success_count + error_count;
-            // float success = ((float)success_count / total) * 100;
-            // printf("success: %.2f%%  (%d/%d)  (success = %d, error = %d, total = %d)\n", success, success_count, total, success_count, error_count, total);
         }
 
         // ================================= STATUS Upload stuff =================================
 
         if (minute_count > CONFIG_STATUS_UPLOAD_INTERVAL_MIN)
         {
-            ESP_LOGI(TAG, "***------------------------------------ UPLOAD STATUS ------------------------------------***");
+            ESP_LOGD(TAG, "***------------------------------------ UPLOAD STATUS ------------------------------------***");
 
             // Evaluate latest power status before upload
             if (xSemaphoreTake(status_struct_gatekeeper, 100))
@@ -367,25 +410,18 @@ void Upload_Task_Code(void *pvParameters)
             int32_t upload_res = 0;
             if (xSemaphoreTake(status_struct_gatekeeper, 100))
             {
-                // status_printStatusStruct();
                 get_status_message_json(status_message);
-
                 xSemaphoreGive(status_struct_gatekeeper);
             }
-            printf("status message: %s\n", status_message);
-            // printf("%s\n", status_message);
+            ESP_LOGI(TAG, "status message: %s", status_message);
 
-            // char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
-            // strcpy(status_telemetry_topic, telemetry_topic);
-            // strcat(status_telemetry_topic, "/");
-            // strcat(status_telemetry_topic, CONFIG_STATUS_SUBFOLDER);
-            printf("status_telemetry_topic: %s\n", status_telemetry_topic);
+            // printf("status_telemetry_topic: %s\n", status_telemetry_topic);
             upload_res = esp_mqtt_client_publish(client, status_telemetry_topic, status_message, 0, 1, 0); // status-telemetry-1
 
             // IF upload was successful
             if (upload_res > 0)
             {
-                ESP_LOGI(TAG, "**************** STATUS PUBLISH SUCCESS!!!! ****************");
+                ESP_LOGI(TAG, "STATUS PUBLISH SUCCESS!");
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
                     // reset status struct
@@ -397,43 +433,30 @@ void Upload_Task_Code(void *pvParameters)
             else
             {
                 ESP_LOGE(TAG, "upload STATUS sending failed  !!!");
+                ESP_LOGI(TAG, "status_telemetry_topic: %s", status_telemetry_topic); // status_telemetry_topic: /devices/C-7CDFA1015100/events/status-telemetry-1
 
                 vTaskDelay(10000 / portTICK_PERIOD_MS);
             }
 
             // ---------------- PUBLISH STATE (only first time microcontroller turns on) ----------------
 
-            // static bool published_state = false; // only publish the state on restart, not every time the device connects to mqtt (this happens at least every jwt refresh)
+            ESP_LOGD(TAG, "publishing device state...");
 
-            // if (published_state == false)
-            // {
-            ESP_LOGI(TAG, "publishing device state...");
-            // char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
-            // state_topic[0] = '\0';
-            // strcpy(state_topic, "/devices/");
-            // strcat(state_topic, device_id);
-            // strcat(state_topic, "/state");
-
-            // char *state_buf = "test";
-            printf("state_topic: %s\n", state_topic);
+            // printf("state_topic: %s\n", state_topic);
 
             int32_t state_upload_res = esp_mqtt_client_publish(client, state_topic, status_message, 0, 1, 0);
 
-            // free(state_topic);
-
             if (state_upload_res > 0)
             {
-                ESP_LOGI(TAG, "state successfully published!!");
-                // published_state = true; // make sure this doesn't happen again unless there is a restart
+                ESP_LOGI(TAG, "STATE PUBLISH SUCCESS!");
             }
             else
             {
                 ESP_LOGE(TAG, "error publishing state, will try again next time device status gets published");
+                ESP_LOGI(TAG, "state_topic: %s", state_topic); // state_topic: /devices/C-7CDFA1015100/state
             }
-            // }
         }
 
-        // printf("free heap end: %d  (min fh: %d)\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         ESP_LOGD(TAG, "min fh: %d\n", esp_get_minimum_free_heap_size());
 
         uint64_t dummy_buf;

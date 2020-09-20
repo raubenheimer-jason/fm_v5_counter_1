@@ -18,18 +18,20 @@ void time_sync_notification_cb(struct timeval *tv)
     // Need to check if RTC needs updating
     uint32_t rtc_unix = rtc_get_unix();
 
-    printf("unix from rtc: %d\n", rtc_unix);
+    ESP_LOGD(TAG, "unix from rtc: %d", rtc_unix);
 
     time_t unix_now;
     time(&unix_now);
 
-    printf("unix from system time: %d\n", (uint32_t)unix_now);
+    ESP_LOGD(TAG, "unix from system time: %d", (uint32_t)unix_now);
 
-    const uint8_t time_tolerance = 2; // seconds (actually 3 because it isn't = to) ??
+    const uint8_t time_tolerance = 1; // seconds (actually 2 because it isn't = to) ??
 
     if (rtc_unix < ((uint32_t)unix_now - time_tolerance) || rtc_unix > ((uint32_t)unix_now + time_tolerance))
     {
         ESP_LOGE(TAG, "-------------------------------------------- RTC time needs to be updated --------------------------------------------");
+        ESP_LOGE(TAG, "unix from system time: %d, unix from rtc: %d", (uint32_t)unix_now, rtc_unix);
+
         time(&unix_now); // make sure unix_now is up to date
         esp_err_t ret = rtc_set_date_time(&unix_now);
         if (ret != ESP_OK)
@@ -43,6 +45,6 @@ void time_sync_notification_cb(struct timeval *tv)
 
         rtc_unix = rtc_get_unix();
 
-        printf("unix from rtc after update: %d\n", rtc_unix);
+        ESP_LOGD(TAG, "unix from rtc after update: %d", rtc_unix);
     }
 }

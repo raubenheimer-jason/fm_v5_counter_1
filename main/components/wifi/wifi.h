@@ -13,6 +13,8 @@
 
 #include "nvs_flash.h"
 
+#include "extern_vars.h" // restart_required_flag (worked when I didn't include this before??)
+
 // GPIO
 #include "components/gpio/gpio.h" // for on_mains_flag
 

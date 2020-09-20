@@ -20,7 +20,7 @@
                                         unix from system time: 1600172342
                                         W (25208528) NTP: RTC time needs to be updated
 
-    -   Send config "restart" instruction???
+    -   Send config "restart" instruction??? -- more difficult than I thought because we need to make sure it doesn't constantly restart -- maybe command rather
 */
 // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
@@ -53,8 +53,6 @@ xSemaphoreHandle status_struct_gatekeeper = NULL;
 xQueueHandle fram_store_queue = NULL;
 xQueueHandle upload_queue = NULL;
 xQueueHandle ack_queue = NULL;
-
-// bool restart_required_flag;
 
 static void start_upload_task(void)
 {
@@ -107,10 +105,6 @@ void app_main(void)
     ESP_LOGI(TAG, "***************************************************************************************************************************");
     ESP_LOGI(TAG, "                                                FIRMWARE VERSION:  %s", CONFIG_FIRMWARE_VERSION);
     ESP_LOGI(TAG, "***************************************************************************************************************************");
-
-    // vTaskDelay(10000 / portTICK_PERIOD_MS);
-
-    // printf("sizeof(time_t): %d\n", sizeof(time_t));
 
     // FRAM
     fram_spi_init();
@@ -188,51 +182,14 @@ void app_main(void)
     // Time
     time_init();
 
-    // rtc_test();
-
     // WiFi
     wifi_init_sta();
 
     // NTP
     initialize_sntp();
 
-    // // test RTC
-
-    // time_t first_time = rtc_get_unix();
-
-    // for (;;)
-    // {
-    //     printf("--------------------------------------------------------------------------------------------------------------\n");
-    //     // print rtc time
-    //     time_t rtc_unix = rtc_get_unix();
-
-    //     time_t system_unix;
-    //     time(&system_unix);
-
-    //     printf("rtc_unix:     %d\n", (int)rtc_unix);
-    //     printf("system_unix:  %d\n", (int)system_unix);
-
-    //     if ((rtc_unix - system_unix) > 1 || (rtc_unix - system_unix) < -1)
-    //     {
-    //         ESP_LOGE(TAG, "error with unix???");
-    //         ESP_LOGW(TAG, "waiting...");
-    //         printf("first_time: %d\n", (int)first_time);
-    //         for (;;)
-    //         {
-    //             vTaskDelay(1000 / portTICK_PERIOD_MS);
-    //         }
-    //     }
-
-    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // }
-
     // MQTT
     mqtt_init(); // make sure NVS is initiated first (done in wifi)
-
-    // for (;;)
-    // {
-    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // }
 
     // Tasks
     start_fram_task();

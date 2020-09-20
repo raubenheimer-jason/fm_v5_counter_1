@@ -173,19 +173,7 @@ uint32_t get_battery_voltage(void)
  */
 void status_evaluatePower(void)
 {
-    // // Read the current battery voltage
-    // int32_t raw_adc_reading = 0;
-    // const uint32_t samples = 10;
-    // for (uint32_t i = 0; i < samples; i++)
-    // {
-    //     // ADC setup
-    //     adc1_config_width(ADC_WIDTH_BIT_13);
-    //     adc1_config_channel_atten(CONFIG_BAT_SENSE_PIN, ADC_ATTEN_DB_11); // ADC1_CHANNEL_9
-    //     raw_adc_reading += adc1_get_raw(CONFIG_BAT_SENSE_PIN);            // BAT_SENSE_PIN
-    // }
-    // raw_adc_reading = raw_adc_reading / samples;
-    // uint32_t voltage = ((raw_adc_reading * (150 + 2450)) / 8191) * 2; // 13 BITS, x2 for voltage divider, 150 and 2450 not really sure... look at documentation, seems to give most accurate reading
-    // status_setBatteryVoltage(voltage); // 2.090 V // 4178
+    // Read the current battery voltage
     status_setBatteryVoltage(get_battery_voltage()); // 2.090 V // 4178
 
     // Check the battery charge status

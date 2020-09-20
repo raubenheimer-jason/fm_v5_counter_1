@@ -7,9 +7,12 @@ static bool is_json_valid(const char *json, uint32_t json_len);
 
 char device_id[20];
 
-static const char *TAG = "MQTT";
+/*  maximum number of times an mqtt error (or disconnection) can occur (consecutively) before restarting the device
+    Error occurs then mqtt disconnects, so just increment in the error case
+*/
+static const uint32_t mqtt_max_error_count = 120;
 
-// int8_t mqtt_connected_flag = 0; // 1 = connected, 0 = not connected
+static const char *TAG = "MQTT";
 
 /**
  * Function to initialise MQTT
@@ -22,7 +25,7 @@ void mqtt_init(void)
 {
     esp_err_t res = get_device_id(device_id);
 
-    printf("res: %d, dev id: %s\n", res, device_id);
+    ESP_LOGI(TAG, "get_device_id res: %d, dev id: %s", res, device_id);
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_LOGI(TAG, "MQTT init done");
@@ -30,6 +33,8 @@ void mqtt_init(void)
 
 esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 {
+    static uint32_t mqtt_error_count = 0;
+
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
     switch (event->event_id)
@@ -46,7 +51,6 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
         char *sub_topic_config = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/config") + 1); // Check for error allocating memory
         sub_topic_config[0] = '\0';
-        // strcat(sub_topic_config, "/devices/");
         strcpy(sub_topic_config, "/devices/");
         strcat(sub_topic_config, device_id);
         strcat(sub_topic_config, "/config");
@@ -55,35 +59,6 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
         free(sub_topic_config);
-
-        // static bool published_state = false; // only publish the state on restart, not every time the device connects to mqtt (this happens at least every jwt refresh)
-
-        // if (published_state == false)
-        // {
-        //     ESP_LOGI(TAG, "publishing device state...");
-        //     char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
-        //     state_topic[0] = '\0';
-        //     // strcat(state_topic, "/devices/");
-        //     strcpy(state_topic, "/devices/");
-        //     strcat(state_topic, device_id);
-        //     strcat(state_topic, "/state");
-
-        //     char *state_buf = "test";
-
-        //     int32_t upload_res = esp_mqtt_client_publish(client, state_topic, state_buf, 0, 1, 0);
-
-        //     free(state_topic);
-
-        //     if (upload_res > 0)
-        //     {
-        //         ESP_LOGI(TAG, "state successfully published!!");
-        //         published_state = true; // make sure this doesn't happen again unless there is a restart
-        //     }
-        //     else
-        //     {
-        //         ESP_LOGE(TAG, "error publishing state, will try again next time mqtt connects");
-        //     }
-        // }
 
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -99,6 +74,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
+        mqtt_error_count = 0;   // reset the error count when publish success
         if (on_mains_flag == 1) // only turn LED on if on mains power
         {
             gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
@@ -107,12 +83,10 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
-        printf("DATA LEN=%d\n", event->data_len);
+        ESP_LOGI(TAG, "TOPIC=%.*s", event->topic_len, event->topic);
+        ESP_LOGI(TAG, "DATA=%.*s", event->data_len, event->data);
+        ESP_LOGD(TAG, "DATA LEN=%d", event->data_len);
 
-        // if (event->data_len > 0) // functions crash otherwise
-        // {
         if (is_json_valid(event->data, event->data_len) == true)
         {
             if (restart_required_flag == false)
@@ -124,11 +98,17 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         {
             ESP_LOGE(TAG, "config data does not contain valid json");
         }
-        // }
 
         break;
     case MQTT_EVENT_ERROR:
-        ESP_LOGE(TAG, "MQTT_EVENT_ERROR");
+        mqtt_error_count++;
+        ESP_LOGE(TAG, "MQTT_EVENT_ERROR (mqtt_error_count = %d)", mqtt_error_count);
+        if (mqtt_error_count > mqtt_max_error_count)
+        {
+            ESP_LOGE(TAG, "setting restart required flay = true (mqtt_max_error_count = %d)", mqtt_max_error_count);
+            restart_required_flag = true;
+        }
+
         if (event->error_handle->error_type == MQTT_ERROR_TYPE_ESP_TLS)
         {
             ESP_LOGI(TAG, "Last error code reported from esp-tls: 0x%x", event->error_handle->esp_tls_last_esp_err);
@@ -183,7 +163,7 @@ static bool is_json_valid(const char *json, uint32_t json_len)
         return false;
     }
 
-    ESP_LOGI(TAG, "valid json");
+    ESP_LOGD(TAG, "valid json");
     return true;
 }
 
@@ -204,13 +184,12 @@ bool jwt_update_check(void)
         ESP_LOGW(TAG, "waiting for time to be updated before updating JWT (now = %ld)", now);
         vTaskDelay(5000 / portTICK_PERIOD_MS);
         time(&now);
-        // printf("now: %ld\n", now);
     }
 
     if ((last_updated + ((float)CONFIG_JWT_EXP - (0.1 * CONFIG_JWT_EXP))) < now)
     {
-        printf("the value: %f   now:%d\n", (last_updated + ((float)CONFIG_JWT_EXP - (0.1 * CONFIG_JWT_EXP))), (uint32_t)now);
-        ESP_LOGI(TAG, "need to update JWT");
+        // printf("the value: %f   now:%d\n", (last_updated + ((float)CONFIG_JWT_EXP - (0.1 * CONFIG_JWT_EXP))), (uint32_t)now);
+        ESP_LOGW(TAG, "need to update JWT");
         last_updated = now;
         return true;
     }
@@ -233,10 +212,7 @@ esp_err_t get_device_id(char device_id[])
         return res;
     }
 
-    sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]); // KEEP THIS !!!!!!!!!!!!!
-    // printf("C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]);
-
-    // sprintf(device_id, "new-test-device"); //new-test-device
+    sprintf(device_id, "C-%02X%02X%02X%02X%02X%02X", raw_mac[0], raw_mac[1], raw_mac[2], raw_mac[3], raw_mac[4], raw_mac[5]);
 
     return ESP_OK;
 }
@@ -245,24 +221,17 @@ esp_err_t get_device_id(char device_id[])
 
 static void firmware_update_check(const char *config_data, const int config_data_len)
 {
-    // const char *current_firmware = "1";
     const char *firmware_version_key = "firmware_version";
     const char *update_url_key = "url";
 
-    ESP_LOGI(TAG, "checking firmware version for update");
+    ESP_LOGD(TAG, "checking firmware version for update");
     char *config_firmware_version = getValueFromJson(config_data, config_data_len, firmware_version_key);
 
     if (config_firmware_version != NULL)
     {
-        // printf("config_firmware_version: %s (length: %d)\n", config_firmware_version, strlen(config_firmware_version));
-
-        // printf("CONFIG_FIRMWARE_VERSION: %s\n", CONFIG_FIRMWARE_VERSION);
-        // printf("CONFIG_FIRMWARE_VERSION: %s\n", current_firmware);
-
         if (strcmp(config_firmware_version, CONFIG_FIRMWARE_VERSION) != 0)
-        // if (strcmp(config_firmware_version, current_firmware) != 0)
         {
-            printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIRMWARE UPDATE AVALIABLE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+            ESP_LOGI(TAG, "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIRMWARE UPDATE AVALIABLE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 
             // Get url from config data (and certificate??)
 
@@ -280,30 +249,6 @@ static void firmware_update_check(const char *config_data, const int config_data
                     with only the new certificate (probably not necessary though). 
                 */
                 const char *update_certificate =
-                    // //Dummy one (does not work)
-                    // "-----BEGIN CERTIFICATE-----\n"
-                    // "HIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G\n"
-                    // "E1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp\n"
-                    // "L24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMjExMjE1\n"
-                    // "LDgwMDAwWjBMMSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEG\n"
-                    // "O1UEChMKR2xvYmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjCCASIwDQYJKoZI\n"
-                    // "hvcNAQEBBQADggEPADCCAQoCggEBAKbPJA6+Lm8omUVCxKs+IVSbC9N/hHD6ErPL\n"
-                    // "v4dfxn+G07IwXNb9rfF73OX4YJYJkhD10FPe+3t+c4isUoh7SqbKSaZeqKeMWhG8\n"
-                    // "eoLrvozps6yWJQeXSpkqBy+0Hne/ig+1AnwblrjFuTosvNYSuetZfeLQBoZfXklq\n"
-                    // "tTleiDTsvHgMCJiEbKjNS7SgfQx5TfC4LcshytVsW33hoCmEofnTlEnLJGKRILzd\n"
-                    // "C9XZzPnqJworc5HGnRusyMvo4KD0L5CLTfuwNhv2GXqF4G3yYROIXJ/gkwpRl4pa\n"
-                    // "zq+r1feqCapgvdzZX99yqWATXgAByUr6P6TqBwMhAo6CygPCm48CAwEAAaOBnDCB\n"
-                    // "mTAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUm+IH\n"
-                    // "V2ccHsBqBt5ZtJot39wZhi4wNgYDVR0fBC8wLTAroCmgJ4YlaHR0cDovL2NybC5n\n"
-                    // "bG9iYWxzaWduLm5ldC9yb290LXIyLmNybDAfBgNVHSMEGDAWgBSb4gdXZxwewGoG\n"
-                    // "3lm0mi3f3BmGLjANBgkqhkiG9w0BAQUFAAOCAQEAmYFThxxol4aR7OBKuEQLq4Gs\n"
-                    // "J0/WwbgcQ3izDJr86iw8bmEbTUsp9Z8FHSbBuOmDAGJFtqkIk7mpM0sYmsL4h4hO\n"
-                    // "291xNBrBVNpGP+DTKqttVCL1OmLNIG+6KYnX3ZHu01yiPqFbQfXf5WRDLenVOavS\n"
-                    // "ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd\n"
-                    // "AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7\n"
-                    // "TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==\n"
-                    // "-----END CERTIFICATE-----\n"
-                    // Real one
                     "-----BEGIN CERTIFICATE-----\n"
                     "MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G\n"
                     "A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp\n"
@@ -334,7 +279,7 @@ static void firmware_update_check(const char *config_data, const int config_data
                 if (ret == ESP_OK)
                 {
                     // set restart_required_flag = true;
-                    printf("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ SET RESTART REQUIRED FLAG = TRUE\n");
+                    ESP_LOGW(TAG, "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ SET RESTART REQUIRED FLAG = TRUE");
                     restart_required_flag = true;
                 }
             }
