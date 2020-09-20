@@ -91,6 +91,14 @@ void char_malloc_checker(const char *ptr, const char *ptr_name)
 
 void Upload_Task_Code(void *pvParameters)
 {
+    // WiFi
+    wifi_init_sta();
+
+    // NTP
+    initialize_sntp();
+
+    // MQTT
+    mqtt_init(); // make sure NVS is initiated first (done in wifi)
 
     // ============ MQTT ============
 

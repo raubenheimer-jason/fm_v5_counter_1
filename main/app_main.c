@@ -10,7 +10,7 @@
 
     -   Make OTA more robust
 
-    -   Check if sensor could see reflector or not when it gets a 0 reaading
+    -   Check if sensor could see reflector or not when it gets a 0 reading
 
     -   -- DONE -- Publish state to GCP IOT Core?
 
@@ -21,6 +21,8 @@
                                         W (25208528) NTP: RTC time needs to be updated
 
     -   Send config "restart" instruction??? -- more difficult than I thought because we need to make sure it doesn't constantly restart -- maybe command rather
+
+    -   Test startup without WiFi (should get time from RTC and record counts as normal)
 */
 // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
@@ -58,7 +60,8 @@ static void start_upload_task(void)
 {
     static uint8_t ucParameterToPass;
     TaskHandle_t Upload_Task = NULL;
-    const uint32_t STACK_SIZE = 24000;
+    // const uint32_t STACK_SIZE = 24000;
+    const uint32_t STACK_SIZE = 16000;
     // const uint8_t task_priority = tskIDLE_PRIORITY;
     const uint8_t task_priority = 10;
 
@@ -110,7 +113,7 @@ void app_main(void)
     fram_spi_init();
 
     // create queues
-    fram_store_queue = xQueueCreate(10, sizeof(uint64_t));
+    fram_store_queue = xQueueCreate(120, sizeof(uint64_t));
     upload_queue = xQueueCreate(1, sizeof(uint64_t));
     ack_queue = xQueueCreate(1, sizeof(uint64_t));
 
@@ -182,14 +185,14 @@ void app_main(void)
     // Time
     time_init();
 
-    // WiFi
-    wifi_init_sta();
+    // // WiFi
+    // wifi_init_sta();
 
-    // NTP
-    initialize_sntp();
+    // // NTP
+    // initialize_sntp();
 
-    // MQTT
-    mqtt_init(); // make sure NVS is initiated first (done in wifi)
+    // // MQTT
+    // mqtt_init(); // make sure NVS is initiated first (done in wifi)
 
     // Tasks
     start_fram_task();

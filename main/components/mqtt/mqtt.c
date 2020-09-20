@@ -127,6 +127,10 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         {
             ESP_LOGW(TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
         }
+
+        ESP_LOGE(TAG, " - delaying 60s to not get rejected from server for retrying too many times");
+        vTaskDelay(60000 / portTICK_PERIOD_MS);
+
         break;
     default:
         ESP_LOGI(TAG, "Other event id:%d", event->event_id);

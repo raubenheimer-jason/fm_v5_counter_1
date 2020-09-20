@@ -10,7 +10,7 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "WIFI";
 
-static const uint32_t wifif_max_disconnected_count = 120; // maximum number of times the wifi doesnt connect (consecutively) before restarting the device
+static const uint32_t wifi_max_disconnected_count = 3600; // roughly 1 per second // maximum number of times the wifi doesn't connect (consecutively) before restarting the device
 
 // Static prototypes
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
@@ -27,12 +27,18 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
         wifi_disconnected_count++;
-        ESP_LOGE(TAG, "** retry to connect to the AP ** (disconnected_count = %d)", wifi_disconnected_count);
+        ESP_LOGE(TAG, "** retry to connect to the AP ** (wifi_disconnected_count = %d)", wifi_disconnected_count);
 
-        if (wifi_disconnected_count > wifif_max_disconnected_count)
+        if (wifi_disconnected_count > wifi_max_disconnected_count)
         {
-            ESP_LOGE(TAG, "disconnected_count > wifif_max_disconnected_count, setting restart_required_flag = true  (wifif_max_disconnected_count = %d)", wifif_max_disconnected_count);
+            ESP_LOGE(TAG, "wifi_disconnected_count > wifi_max_disconnected_count, setting restart_required_flag = true  (wifi_max_disconnected_count = %d)", wifi_max_disconnected_count);
             restart_required_flag = true;
+
+            if (wifi_disconnected_count > wifi_max_disconnected_count * 2)
+            {
+                ESP_LOGE(TAG, "restart_required_flag no successful, forcing restart");
+                esp_restart();
+            }
         }
 
         if (on_mains_flag == 1) // only turn LED on if on mains power
@@ -58,7 +64,12 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
 void wifi_init_sta(void)
 {
     //Initialize NVS (for WiFi)
+
+    // esp_err_t erase_ret = nvs_flash_erase();
+    // printf("erase_ret: %s\n", esp_err_to_name(erase_ret));
+
     esp_err_t ret = nvs_flash_init();
+
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -108,15 +119,15 @@ void wifi_init_sta(void)
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             // .threshold.rssi = -100,
 
-            .scan_method = WIFI_ALL_CHANNEL_SCAN,
+            // .scan_method = WIFI_ALL_CHANNEL_SCAN,
 
-            .bssid_set = false,
+            // .bssid_set = false,
 
-            .channel = 0,
+            // .channel = 0,
 
-            .listen_interval = 0,
+            // .listen_interval = 0,
 
-            .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
+            // .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
 
             .pmf_cfg = {
                 .capable = true,
