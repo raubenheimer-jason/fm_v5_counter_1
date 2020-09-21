@@ -28,8 +28,10 @@ void stop_mqtt(esp_mqtt_client_handle_t client)
     ESP_LOGW(TAG, "stopping mqtt");
     esp_mqtt_client_stop(client);
 
-    // ESP_LOGW(TAG, "disconnecting wifi");
-    // esp_wifi_disconnect();
+    ESP_LOGW(TAG, "disconnecting wifi");
+    esp_wifi_disconnect();
+    esp_wifi_stop();
+    esp_wifi_deinit();
 }
 
 /**
@@ -46,8 +48,17 @@ void increment_upload_error_count(esp_mqtt_client_handle_t client)
         stop_mqtt(client);
         ESP_LOGI(TAG, "UPLOAD TASK shutdown complete, waiting for FRAM TASK");
         restart_required_flag = true;
+        uint32_t count = 0;
+        const uint32_t max_count = 100;
         for (;;)
         {
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            if (count > max_count)
+            {
+                ESP_LOGE(TAG, "timeout exceeded waiting for restart_required_flag to restart device, forcing restart...");
+                esp_restart();
+            }
+            count++;
         }
     }
 }
@@ -83,11 +94,12 @@ void char_malloc_checker(const char *ptr, const char *ptr_name)
                 ESP_LOGE(TAG, "restart still hasn't occured, forcing restart...");
                 esp_restart();
             }
+            count++;
         }
     }
 }
 
-// // ====================================================== MQTT
+// ====================================================== MQTT
 
 void Upload_Task_Code(void *pvParameters)
 {
@@ -98,7 +110,7 @@ void Upload_Task_Code(void *pvParameters)
     initialize_sntp();
 
     // MQTT
-    mqtt_init(); // make sure NVS is initiated first (done in wifi)
+    mqtt_init();
 
     // ============ MQTT ============
 
@@ -128,22 +140,6 @@ void Upload_Task_Code(void *pvParameters)
     // Won't need to free this as it's used throughout the life of the program
     char *client_id = (char *)malloc(strlen("projects/") + strlen(CONFIG_GCP_PROJECT_ID) + strlen("/locations/") + strlen(CONFIG_GCP_LOCATION) + strlen("/registries/") + strlen(CONFIG_GCP_REGISTRY) + strlen("/devices/") + strlen(device_id) + 1);
     char_malloc_checker(client_id, "client_id");
-    // if (client_id == NULL)
-    // {
-    //     ESP_LOGE(TAG, "client_id == NULL, setting restart_required_flag = true");
-    //     restart_required_flag = true;
-    //     uint8_t count = 0;
-    //     uint8_t max_count = 100;
-    //     for (;;)
-    //     {
-    //         vTaskDelay(5000 / portTICK_PERIOD_MS);
-    //         if (count > max_count)
-    //         {
-    //             ESP_LOGE(TAG, "restart still hasn't occured, forcing restart...");
-    //             esp_restart();
-    //         }
-    //     }
-    // }
     client_id[0] = '\0';
     strcat(client_id, "projects/"); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
     strcat(client_id, CONFIG_GCP_PROJECT_ID);
@@ -338,14 +334,7 @@ void Upload_Task_Code(void *pvParameters)
             // Send telemetry to GCP here
 
             char telemetry_buf[40]; // {"t":1596255206,"v":4294967295} --> 31 characters
-            // snprintf(telemetry_buf, 40, "{\"t\":%d,\"v\":%d}", (int)unix_time, (int)count);
             snprintf(telemetry_buf, 40, "{\"t\":%d,\"v\":%d}", unix_time, count);
-
-            // uint32_t telemetry_buf_size = strlen("{\"t\":4294967295,\"v\":4294967295}") + 1; // 4294967295 = uint32_t max value, +1 for \0
-            // char *telemetry_buf = (char *)malloc(telemetry_buf_size);
-            // char_malloc_checker(telemetry_buf, "telemetry_buf");
-            // telemetry_buf[0] = '\0';
-            // snprintf(telemetry_buf, telemetry_buf_size, "{\"t\":%d,\"v\":%d}", unix_time, count);
 
             ESP_LOGD(TAG, "%s", telemetry_buf);
 
@@ -423,7 +412,6 @@ void Upload_Task_Code(void *pvParameters)
             }
             ESP_LOGI(TAG, "status message: %s", status_message);
 
-            // printf("status_telemetry_topic: %s\n", status_telemetry_topic);
             upload_res = esp_mqtt_client_publish(client, status_telemetry_topic, status_message, 0, 1, 0); // status-telemetry-1
 
             // IF upload was successful
@@ -449,8 +437,6 @@ void Upload_Task_Code(void *pvParameters)
             // ---------------- PUBLISH STATE (only first time microcontroller turns on) ----------------
 
             ESP_LOGD(TAG, "publishing device state...");
-
-            // printf("state_topic: %s\n", state_topic);
 
             int32_t state_upload_res = esp_mqtt_client_publish(client, state_topic, status_message, 0, 1, 0);
 

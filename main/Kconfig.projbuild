@@ -6,22 +6,22 @@ menu "Example Configuration"
 
 # WIFI ---------------------------------------------- WIFI
     # Dynamic Brands 2
-    # config WIFI_SSID
-    #     string
-    #     default "TOI Network 2"
-
-    # config WIFI_PASSWORD
-    #     string
-    #     default "O5Qy#g2K0PaizE)h_[C.3!^2O*1Wj#"
-
-    # Uitsig
     config WIFI_SSID
         string
-        default "Uitsig"
-    
+        default "TOI Network 2"
+
     config WIFI_PASSWORD
         string
-        default "0834567432"
+        default "O5Qy#g2K0PaizE)h_[C.3!^2O*1Wj#"
+
+    # Uitsig
+    # config WIFI_SSID
+    #     string
+    #     default "Uitsig"
+    
+    # config WIFI_PASSWORD
+    #     string
+    #     default "0834567432"
 # END WIFI ________________________ END WIFI
 
 # KEYS ---------------------------------------------- KEYS

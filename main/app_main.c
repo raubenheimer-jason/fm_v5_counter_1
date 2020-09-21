@@ -40,7 +40,7 @@
 
 #include "main.h"
 
-// // For printing uint64_t
+// /* For printing uint64_t */
 // #define __STDC_FORMAT_MACROS
 // #include <inttypes.h>
 // uint64_t i;
@@ -58,24 +58,20 @@ xQueueHandle ack_queue = NULL;
 
 static void start_upload_task(void)
 {
-    static uint8_t ucParameterToPass;
     TaskHandle_t Upload_Task = NULL;
-    // const uint32_t STACK_SIZE = 24000;
-    const uint32_t STACK_SIZE = 16000;
-    // const uint8_t task_priority = tskIDLE_PRIORITY;
+    const uint32_t STACK_SIZE = 32000;
     const uint8_t task_priority = 10;
 
     // Create the task, storing the handle.  Note that the passed parameter ucParameterToPass
     // must exist for the lifetime of the task, so in this case is declared static.  If it was just an
     // an automatic stack variable it might no longer exist, or at least have been corrupted, by the time
     // the new task attempts to access it.
-    xTaskCreate(Upload_Task_Code, "Upload_Task", STACK_SIZE, &ucParameterToPass, task_priority, &Upload_Task);
+    xTaskCreate(Upload_Task_Code, "Upload_Task", STACK_SIZE, NULL, task_priority, &Upload_Task);
     configASSERT(Upload_Task);
 }
 
 static void start_fram_task()
 {
-    static uint8_t ucParameterToPass;
     TaskHandle_t Fram_Task = NULL;
     const uint32_t STACK_SIZE = 8000;
     const uint8_t task_priority = 9;
@@ -84,7 +80,7 @@ static void start_fram_task()
     // must exist for the lifetime of the task, so in this case is declared static.  If it was just an
     // an automatic stack variable it might no longer exist, or at least have been corrupted, by the time
     // the new task attempts to access it.
-    xTaskCreate(Fram_Task_Code, "Fram_Task", STACK_SIZE, &ucParameterToPass, task_priority, &Fram_Task);
+    xTaskCreate(Fram_Task_Code, "Fram_Task", STACK_SIZE, NULL, task_priority, &Fram_Task);
     configASSERT(Fram_Task);
 }
 
@@ -97,7 +93,6 @@ void app_main(void)
     esp_log_level_set("*", ESP_LOG_INFO);
     esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
     esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
-    // esp_log_level_set("MQTT_EXAMPLE", ESP_LOG_VERBOSE);
     esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
     esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
@@ -184,15 +179,6 @@ void app_main(void)
 
     // Time
     time_init();
-
-    // // WiFi
-    // wifi_init_sta();
-
-    // // NTP
-    // initialize_sntp();
-
-    // // MQTT
-    // mqtt_init(); // make sure NVS is initiated first (done in wifi)
 
     // Tasks
     start_fram_task();

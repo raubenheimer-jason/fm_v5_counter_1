@@ -27,7 +27,8 @@ void mqtt_init(void)
 
     ESP_LOGI(TAG, "get_device_id res: %d, dev id: %s", res, device_id);
 
-    ESP_ERROR_CHECK(esp_netif_init());
+    // Done for wifi ??
+    // ESP_ERROR_CHECK(esp_netif_init());
     ESP_LOGI(TAG, "MQTT init done");
 }
 
@@ -192,7 +193,6 @@ bool jwt_update_check(void)
 
     if ((last_updated + ((float)CONFIG_JWT_EXP - (0.1 * CONFIG_JWT_EXP))) < now)
     {
-        // printf("the value: %f   now:%d\n", (last_updated + ((float)CONFIG_JWT_EXP - (0.1 * CONFIG_JWT_EXP))), (uint32_t)now);
         ESP_LOGW(TAG, "need to update JWT");
         last_updated = now;
         return true;

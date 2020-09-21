@@ -19,6 +19,7 @@
     "time.h": "c",
     "time_init.h": "c",
     "cstddef": "cpp",
-    "mqtt.h": "c"
+    "mqtt.h": "c",
+    "mqtt_client.h": "c"
   }
 }

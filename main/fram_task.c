@@ -52,8 +52,6 @@ void Fram_Task_Code(void *pvParameters)
 
     for (;;)
     {
-        // ESP_LOGI(TAG, "free heap end: %d  (min fh: %d)", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
-
         mains_flag_evaluation();
 
         uint64_t telemetry_to_store = 0;
@@ -81,19 +79,6 @@ void Fram_Task_Code(void *pvParameters)
                     xSemaphoreGive(status_struct_gatekeeper);
                 }
             }
-
-            // time_t rtc_unix = rtc_get_unix();
-
-            // time_t system_unix;
-            // time(&system_unix);
-
-            // printf("rtc_unix:     %d\n", (int)rtc_unix);
-            // printf("system_unix:  %d\n", (int)system_unix);
-
-            // if ((rtc_unix - system_unix) != 0)
-            // {
-            //     ESP_LOGE(TAG, "error with unix???");
-            // }
 
             rtc_clear_alarm();
             minute_count++;

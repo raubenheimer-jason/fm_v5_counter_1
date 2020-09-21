@@ -286,8 +286,6 @@ bool check_state()
     // if each are individually divisible by 8 (when bottom limit is - from the address), then they must be a multple of 8 away from each other
     if ((bottom - limit_addr_bottom) % telemetry_bytes != 0 || (top - limit_addr_bottom) % telemetry_bytes != 0)
     {
-        // String err_message{"[FRAM_obj] error with address values (bottom: " + String(bottom) + "  top: " + String(top) + ")"};
-        // Serial.println(err_message);
         ESP_LOGE(TAG, "error with address values (bottom: %d  top: %d)", bottom, top);
         return false;
     }
@@ -353,7 +351,6 @@ static uint8_t read_status_register()
 static uint8_t fram_read_byte(const uint32_t address)
 {
     uint8_t read_byte;
-    // esp_err_t res;
     spi_transaction_t t;
 
     memset(&t, 0, sizeof(t));
@@ -362,7 +359,6 @@ static uint8_t fram_read_byte(const uint32_t address)
     t.addr = address;
     t.flags = SPI_TRANS_USE_RXDATA;
     t.rxlength = 8;
-    // res = spi_device_polling_transmit(spi_device, &t);
     spi_device_polling_transmit(spi_device, &t);
     read_byte = t.rx_data[0];
 
@@ -374,13 +370,11 @@ static uint8_t fram_read_byte(const uint32_t address)
  */
 static void fram_write_byte(const uint32_t address, uint8_t data_byte)
 {
-    // esp_err_t res;
     spi_transaction_t t;
 
     memset(&t, 0, sizeof(t));
     t.length = 8;
     t.cmd = WREN;
-    // res = spi_device_polling_transmit(spi_device, &t);
     spi_device_polling_transmit(spi_device, &t);
     memset(&t, 0, sizeof(t));
     t.cmd = WRITE;
@@ -388,7 +382,6 @@ static void fram_write_byte(const uint32_t address, uint8_t data_byte)
     t.tx_data[0] = data_byte;
     t.length = 8;
     t.flags = SPI_TRANS_USE_TXDATA;
-    // res = spi_device_polling_transmit(spi_device, &t);
     spi_device_polling_transmit(spi_device, &t);
 }
 

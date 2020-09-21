@@ -19,7 +19,7 @@
 // Time
 #include "components/time_init/time_init.h"
 
-// // FRAM
+// FRAM
 #include "fram_task.h"
 
 // wifi
@@ -31,7 +31,7 @@
 // GPIO
 #include "components/gpio/gpio.h"
 
-// // MQTT
+// Upload Task (MQTT)
 #include "upload_task.h"
 
 // status
