@@ -236,5 +236,7 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
     strcat(comp_jwt, ".");
     strcat(comp_jwt, enc_signature);
 
+    free(enc_signature);
+
     return comp_jwt;
 }

@@ -1,5 +1,11 @@
 #include "upload_task.h"
 
+// start heap tracing
+
+// #include "esp_heap_trace.h"
+
+// end heap tracing
+
 static const char *TAG = "UPLOAD_TASK";
 
 uint8_t minute_count = 61; // Force status update on restart. Count of the minutes to know when an hour has passed (for uploading the status)
@@ -131,7 +137,13 @@ void Upload_Task_Code(void *pvParameters)
         ESP_LOGI(TAG, "system time updated (now = %d)", (uint32_t)now);
     }
 
+    // ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
+
     char *jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
+
+    // ESP_ERROR_CHECK(heap_trace_stop());
+    // heap_trace_dump();
+
     char_malloc_checker(jwt, "jwt");
 
     ESP_LOGI(TAG, "jwt: %s", jwt);
@@ -209,16 +221,17 @@ void Upload_Task_Code(void *pvParameters)
     {
         ESP_LOGD(TAG, "free heap start: %d", esp_get_free_heap_size());
 
-        if (mqtt_connected_flag == 0)
-        {
-            ESP_LOGW(TAG, "waiting for mqtt to connect...");
-            while (mqtt_connected_flag == 0)
-            {
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-            }
-            ESP_LOGI(TAG, "mqtt connected!");
-        }
+        // if (mqtt_connected_flag == 0)
+        // {
+        //     ESP_LOGW(TAG, "waiting for mqtt to connect...");
+        //     while (mqtt_connected_flag == 0)
+        //     {
+        //         vTaskDelay(1000 / portTICK_PERIOD_MS);
+        //     }
+        //     ESP_LOGI(TAG, "mqtt connected!");
+        // }
 
+        bool mqtt_disconnected = false;
         esp_err_t wifi_info_res = ESP_ERR_WIFI_NOT_CONNECT;
         do
         {
@@ -228,6 +241,17 @@ void Upload_Task_Code(void *pvParameters)
             if (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT)
             {
                 ESP_LOGE(TAG, "WiFi not connected (ESP_ERR_WIFI_NOT_CONNECT)");
+
+                if (mqtt_disconnected == false)
+                {
+                    ESP_LOGW(TAG, "no wifi - disconnecting mqtt");
+                    esp_mqtt_client_disconnect(client);
+
+                    ESP_LOGW(TAG, "no wifi - stopping mqtt");
+                    esp_mqtt_client_stop(client);
+                    mqtt_disconnected = true;
+                }
+
                 if (xSemaphoreTake(status_struct_gatekeeper, 100))
                 {
                     status_incrementWifiDisconnections();
@@ -245,6 +269,16 @@ void Upload_Task_Code(void *pvParameters)
             }
 
         } while (wifi_info_res == ESP_ERR_WIFI_NOT_CONNECT);
+
+        if (mqtt_connected_flag == 0)
+        {
+            ESP_LOGW(TAG, "waiting for mqtt to connect...");
+            while (mqtt_connected_flag == 0)
+            {
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            }
+            ESP_LOGI(TAG, "mqtt connected!");
+        }
 
         // ============ MQTT ============
 

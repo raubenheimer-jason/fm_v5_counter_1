@@ -103,9 +103,13 @@ menu "Example Configuration"
         int
         default 1600328461
     
+    # config JWT_EXP
+    #     int
+    #     default 3600
+
     config JWT_EXP
         int
-        default 3600
+        default 300
 
 # GCP ---------------------------------------------- GCP
     config GCP_PROJECT_ID

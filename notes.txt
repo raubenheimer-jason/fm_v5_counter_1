@@ -6,3 +6,17 @@ OTA Updates:
     We must just make sure to send an OTA update with the new certificate (as well as
     the old one) before the old one expires. Thereafter we can send another OTA update
     with only the new certificate (probably not necessary though).
+
+
+Device setup
+
+    Make sure WiFi NVS is unticked from menuconfig
+
+    Probably have to specify flash size is 4MB in menuconfig
+
+    Make sure Kconfig.projbuild is set correctly
+
+
+WiFi Router setup
+
+    Assign a static IP to the device

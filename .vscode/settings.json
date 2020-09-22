@@ -20,6 +20,8 @@
     "time_init.h": "c",
     "cstddef": "cpp",
     "mqtt.h": "c",
-    "mqtt_client.h": "c"
+    "mqtt_client.h": "c",
+    "gpio.h": "c",
+    "upload_task.h": "c"
   }
 }

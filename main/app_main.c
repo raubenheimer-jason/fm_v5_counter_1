@@ -40,6 +40,11 @@
 
 #include "main.h"
 
+// #include "esp_heap_trace.h"
+
+// #define NUM_RECORDS 100
+// static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in internal RAM
+
 // /* For printing uint64_t */
 // #define __STDC_FORMAT_MACROS
 // #include <inttypes.h>
@@ -103,6 +108,8 @@ void app_main(void)
     ESP_LOGI(TAG, "***************************************************************************************************************************");
     ESP_LOGI(TAG, "                                                FIRMWARE VERSION:  %s", CONFIG_FIRMWARE_VERSION);
     ESP_LOGI(TAG, "***************************************************************************************************************************");
+
+    // ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, NUM_RECORDS));
 
     // FRAM
     fram_spi_init();

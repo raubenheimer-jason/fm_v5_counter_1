@@ -279,6 +279,8 @@ static void firmware_update_check(const char *config_data, const int config_data
                 // download firmware update
                 esp_err_t ret = firmware_update(update_url, update_certificate);
 
+                free(update_url);
+
                 // if firmware download was successful, set restart_required_flag = true
                 if (ret == ESP_OK)
                 {
