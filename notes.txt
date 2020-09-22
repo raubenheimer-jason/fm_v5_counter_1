@@ -20,3 +20,132 @@ Device setup
 WiFi Router setup
 
     Assign a static IP to the device
+
+
+
+
+
+
+make sure there is enough free heap before OTA update 
+
+    fh: 44556    min fh: 41144
+I (12037) MQTT: TOPIC=/devices/C-7CDFA1015100/config
+I (12037) MQTT: DATA={"firmware_version":"2","url":"https://firebasestorage.googleapis.com/v0/b/fm-development-1.appspot.com/o/firmware_updates%2Fcounters%2FFM-V5%2Fv2%2Ffm_v5_counter_1.bin?alt=media&token=334acb94-606d-45ad-abae-59f78e5d8cf1"}
+I (12067) MQTT: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIRMWARE UPDATE AVALIABLE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+I (12077) MQTT: got update url from config
+update_url: https://firebasestorage.googleapis.com/v0/b/fm-development-1.appspot.com/o/firmware_updates%2Fcounters%2FFM-V5%2Fv2%2Ffm_v5_counter_1.bin?alt=media&token=334acb94-606d-45ad-abae-59f78e5d8cf1
+I (12097) MQTT: downloading firmware update
+I (16677) esp_https_ota: Starting OTA...
+I (16677) esp_https_ota: Writing to partition subtype 16 at offset 0x110000
+I (43427) esp_https_ota: Connection closed
+I (43427) esp_image: segment 0: paddr=0x00110020 vaddr
+
+
+
+DISCONNECT WIFI before restart??? or just leave it??
+
+fh: 48604    min fh: 41144
+I (11977) UPLOAD_TASK: mqtt connected!
+I (11977) UPLOAD_TASK: {"t":1600780440,"v":0}   -->> PUBLISH SUCCESS!!!!  -- > success: 100.00%  (1/1)  (success = 1, error = 0, total = 1) -- fh: 46600  -- min fh: 41144
+I (11987) UPLOAD_TASK: status message: {"firm_v":1,"bv":4116,"bcs":1,"om":0,"fh":46660,"mfh":41144,"wd":0,"wr":-62,"mue":0,"mcre":0,"ntpe":0,"stue":0,"rste":0,"rre":0,"fre":0,"fwe":0,"fae":0,"fhw":0}
+I (12007) UPLOAD_TASK: STATUS PUBLISH SUCCESS!
+I (12007) UPLOAD_TASK: STATE PUBLISH SUCCESS!
+I (12017) UPLOAD_TASK: {"t":1600780500,"v":0}   -->> PUBLISH SUCCESS!!!!  -- > success: 100.00%  (2/2)  (success = 2, error = 0, total = 2) -- fh: 44004  -- min fh: 41144
+I (12027) MQTT: MQTT_EVENT_DATA
+fh: 44556    min fh: 41144
+I (12037) MQTT: TOPIC=/devices/C-7CDFA1015100/config
+I (12037) MQTT: DATA={"firmware_version":"2","url":"https://firebasestorage.googleapis.com/v0/b/fm-development-1.appspot.com/o/firmware_updates%2Fcounters%2FFM-V5%2Fv2%2Ffm_v5_counter_1.bin?alt=media&token=334acb94-606d-45ad-abae-59f78e5d8cf1"}
+I (12067) MQTT: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FIRMWARE UPDATE AVALIABLE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+I (12077) MQTT: got update url from config
+update_url: https://firebasestorage.googleapis.com/v0/b/fm-development-1.appspot.com/o/firmware_updates%2Fcounters%2FFM-V5%2Fv2%2Ffm_v5_counter_1.bin?alt=media&token=334acb94-606d-45ad-abae-59f78e5d8cf1
+I (12097) MQTT: downloading firmware update
+I (16677) esp_https_ota: Starting OTA...
+I (16677) esp_https_ota: Writing to partition subtype 16 at offset 0x110000
+I (43427) esp_https_ota: Connection closed
+I (43427) esp_image: segment 0: paddr=0x00110020 vaddr=0x3f000020 size=0x24318 (148248) map
+I (43457) esp_image: segment 1: paddr=0x00134340 vaddr=0x3ffc9670 size=0x036d8 ( 14040) 
+I (43457) esp_image: segment 2: paddr=0x00137a20 vaddr=0x40022000 size=0x00404 (  1028) 
+0x40022000: _WindowOverflow4 at C:/Users/jason/esp-idf/components/freertos/xtensa/xtensa_vectors.S:1730
+
+I (43467) esp_image: segment 3: paddr=0x00137e2c vaddr=0x40022404 size=0x081ec ( 33260) 
+0x40022404: _coredump_iram_start at ??:?
+
+I (43477) esp_image: segment 4: paddr=0x00140020 vaddr=0x40080020 size=0x98024 (622628) map
+0x40080020: _stext at ??:?
+
+I (43587) esp_image: segment 5: paddr=0x001d804c vaddr=0x4002a5f0 size=0x0f074 ( 61556) 
+0x4002a5f0: print_registers at C:/Users/jason/esp-idf/components/esp_system/port/panic_handler.c:201
+
+I (43607) esp_image: segment 0: paddr=0x00110020 vaddr=0x3f000020 size=0x24318 (148248) map
+I (43627) esp_image: segment 1: paddr=0x00134340 vaddr=0x3ffc9670 size=0x036d8 ( 14040) 
+I (43637) esp_image: segment 2: paddr=0x00137a20 vaddr=0x40022000 size=0x00404 (  1028) 
+0x40022000: _WindowOverflow4 at C:/Users/jason/esp-idf/components/freertos/xtensa/xtensa_vectors.S:1730
+
+I (43637) esp_image: segment 3: paddr=0x00137e2c vaddr=0x40022404 size=0x081ec ( 33260) 
+0x40022404: _coredump_iram_start at ??:?
+
+I (43657) esp_image: segment 4: paddr=0x00140020 vaddr=0x40080020 size=0x98024 (622628) map
+0x40080020: _stext at ??:?
+
+I (43767) esp_image: segment 5: paddr=0x001d804c vaddr=0x4002a5f0 size=0x0f074 ( 61556) 
+0x4002a5f0: print_registers at C:/Users/jason/esp-idf/components/esp_system/port/panic_handler.c:201
+
+I (43827) MQTT: successfully downloaded new firmware
+W (43827) MQTT: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ SET RESTART REQUIRED FLAG = TRUE
+fh: 43656    min fh: 2520
+I (43837) UPLOAD_TASK: {"t":1600780560,"v":0}   -->> PUBLISH SUCCESS!!!!  -- > success: 100.00%  (3/3)  (success = 3, error = 0, total = 3) -- fh: 41776  -- min fh: 2520
+W (43847) FRAM_TASK: ------>> DEVICE RESTARTING IN 1 SECOND ... 
+I (43867) MQTT: MQTT_EVENT_DATA
+fh: 43396    min fh: 2520
+I (43867) MQTT: TOPIC=/devices/C-7CDFA1015100/config
+I (43867) MQTT: DATA={"firmware_version":"2","url":"https://firebasestorage.googleapis.com/v0/b/fm-development-1.appspot.com/o/firmware_updates%2Fcounters%2FFM-V5%2Fv2%2Ffm_v5_counter_1.bin?alt=media&token=334acb94-606d-45ad-abae-59f78e5d8cf1"}
+fh: 43396    min fh: 2520
+I (43897) MQTT: MQTT_EVENT_DATA
+fh: 43936    min fh: 2520
+I (43897) MQTT: TOPIC=/devices/C-7CDFA1015100/config
+I (43897) MQTT: DATA={"firmware_version":"2","url":"https://firebasestorage.googleapis.com/v0/b/fm-development-1.appspot.com/o/firmware_updates%2Fcounters%2FFM-V5%2Fv2%2Ffm_v5_counter_1.bin?alt=media&token=334acb94-606d-45ad-abae-59f78e5d8cf1"}
+fh: 43936    min fh: 2520
+I (43927) MQTT: MQTT_EVENT_DATA
+fh: 44480    min fh: 2520
+I (43927) MQTT: TOPIC=/devices/C-7CDFA1015100/config
+I (43937) MQTT: DATA={"firmware_version":"2","url":"https://firebasestorage.googleapis.com/v0/b/fm-development-1.appspot.com/o/firmware_updates%2Fcounters%2FFM-V5%2Fv2%2Ffm_v5_counter_1.bin?alt=media&token=334acb94-606d-45ad-abae-59f78e5d8cf1"}
+fh: 44480    min fh: 2520
+D (44847) wifi:connect status 5 -> 0
+D (44847) wifi:Start wifi disconnect
+I (44847) wifi:state: run -> init (0)
+D (44847) wifi:connect status 0 -> 6
+D (44847) wifi:stop beacon/connect timer, send diassoc(8)
+D (44847) wifi:sta leave
+I (44857) wifi:pm stop, total sleep time: 18406451 us / 42458339 us
+
+D (44857) wifi:stop CSA timer
+D (44857) wifi:remove 9c:a5:25:ad:8f:98 from rc list
+I (44867) wifi:new:<2,0>, old:<2,1>, ap:<255,255>, sta:<2,1>, prof:1
+D (44877) wifi:filter: set rx policy=8
+D (44877) wifi:Send disconnect event, reason=8, AP number=0
+D (44877) wifi:connect status 6 -> 0
+D (44887) wifi:filter: set rx policy=8
+D (44887) wifi:filter: set rx policy=2
+D (44887) wifi:clear blacklist
+D (44897) wifi:clear rc list
+_________________________ EVENT HANDLER _________________________
+E (44897) WIFI: ** retry to connect to the AP ** (wifi_disconnected_count = 1)
+_________________________ EVENT HANDLER _________________________
+E (44917) TRANS_SSL: ssl_poll_read select error 113, errno = Software caused connection abort, fd = 54
+E (44927) MQTT_CLIENT: Poll read error: 9, aborting connection
+I (44937) wifi:flush txq
+I (44937) wifi:stop sw txq
+D (44937) wifi:filter: set rx policy=0
+I (44937) wifi:lmac stop hw txq
+ESP-ROM:esp32s2-rc4-20191025
+Build:Oct 25 2019
+rst:0x3 (RTC_SW_SYS_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40023581
+0x40023581: esp_restart_noos_dig at C:/Users/jason/esp-idf/components/esp_system/system_api.c:59 (discriminator 1)
+
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3ffe6100,len:0x8
+load:0x3ffe6108,len:0x17f4
+load:0x4004c000,len:0x14c4
+load:0x40050000,len:0x2158

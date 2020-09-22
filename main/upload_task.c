@@ -150,7 +150,8 @@ void Upload_Task_Code(void *pvParameters)
 
     // Check for error allocating memory
     // Won't need to free this as it's used throughout the life of the program
-    char *client_id = (char *)malloc(strlen("projects/") + strlen(CONFIG_GCP_PROJECT_ID) + strlen("/locations/") + strlen(CONFIG_GCP_LOCATION) + strlen("/registries/") + strlen(CONFIG_GCP_REGISTRY) + strlen("/devices/") + strlen(device_id) + 1);
+    // char *client_id = (char *)malloc(strlen("projects/") + strlen(CONFIG_GCP_PROJECT_ID) + strlen("/locations/") + strlen(CONFIG_GCP_LOCATION) + strlen("/registries/") + strlen(CONFIG_GCP_REGISTRY) + strlen("/devices/") + strlen(device_id) + 1);
+    char *client_id = malloc(strlen("projects/") + strlen(CONFIG_GCP_PROJECT_ID) + strlen("/locations/") + strlen(CONFIG_GCP_LOCATION) + strlen("/registries/") + strlen(CONFIG_GCP_REGISTRY) + strlen("/devices/") + strlen(device_id) + 1);
     char_malloc_checker(client_id, "client_id");
     client_id[0] = '\0';
     strcat(client_id, "projects/"); // projects/fm-development-1/locations/us-central1/registries/counter-1/devices/new-test-device
@@ -183,7 +184,8 @@ void Upload_Task_Code(void *pvParameters)
     ESP_LOGD(TAG, "start_ret: %d", start_ret);
 
     // Won't need to free this as it's used throughout the life of the program
-    char *telemetry_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
+    // char *telemetry_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
+    char *telemetry_topic = malloc(strlen("/devices/") + strlen(device_id) + strlen("/events") + 1); // Check for error allocating memory
     char_malloc_checker(telemetry_topic, "telemetry_topic");
     telemetry_topic[0] = '\0';
     strcat(telemetry_topic, "/devices/"); // "/devices/new-test-device/events"
@@ -192,7 +194,8 @@ void Upload_Task_Code(void *pvParameters)
     ESP_LOGI(TAG, "len = %d, telemetry_topic: %s", strlen(telemetry_topic), telemetry_topic); // len = 30, telemetry_topic: /devices/C-7CDFA1015100/events
 
     // Won't need to free this as it's used throughout the life of the program
-    char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
+    // char *status_telemetry_topic = (char *)malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
+    char *status_telemetry_topic = malloc(strlen(telemetry_topic) + strlen(CONFIG_STATUS_SUBFOLDER) + 1 + 1); // + 1 for "/", + 1 for '\0'
     char_malloc_checker(status_telemetry_topic, "status_telemetry_topic");
     strcpy(status_telemetry_topic, telemetry_topic);
     strcat(status_telemetry_topic, "/");
@@ -200,7 +203,8 @@ void Upload_Task_Code(void *pvParameters)
     ESP_LOGI(TAG, "status_telemetry_topic: %s", status_telemetry_topic); // status_telemetry_topic: /devices/C-7CDFA1015100/events/status-telemetry-1
 
     // Won't need to free this as it's used throughout the life of the program
-    char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
+    // char *state_topic = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
+    char *state_topic = malloc(strlen("/devices/") + strlen(device_id) + strlen("/state") + 1); // Check for error allocating memory
     char_malloc_checker(state_topic, "state_topic");
     state_topic[0] = '\0';
     strcpy(state_topic, "/devices/");
@@ -220,6 +224,8 @@ void Upload_Task_Code(void *pvParameters)
     for (;;)
     {
         ESP_LOGD(TAG, "free heap start: %d", esp_get_free_heap_size());
+
+        printf("[upload task] stack high water mark: %d\n", uxTaskGetStackHighWaterMark(NULL));
 
         // if (mqtt_connected_flag == 0)
         // {
@@ -284,6 +290,8 @@ void Upload_Task_Code(void *pvParameters)
 
         if (jwt_update_check())
         {
+            printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+
             free(jwt); // Free the old jwt pointer
             time(&now);
             jwt = createJwt(private_key, CONFIG_GCP_PROJECT_ID, CONFIG_JWT_EXP, (uint32_t)now); // DONT FREE THIS
@@ -324,6 +332,8 @@ void Upload_Task_Code(void *pvParameters)
 
             if (mqtt_connected_flag == 0)
             {
+                printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+
                 ESP_LOGW(TAG, "waiting for mqtt to connect after jwt refresh...");
                 while (mqtt_connected_flag == 0)
                 {
@@ -331,6 +341,7 @@ void Upload_Task_Code(void *pvParameters)
                 }
                 ESP_LOGI(TAG, "mqtt connected!");
             }
+            printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         }
         // ============ MQTT END ============
 

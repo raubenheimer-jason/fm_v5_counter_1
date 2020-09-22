@@ -42,6 +42,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+        printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
 
         mqtt_connected_flag = 1;
 
@@ -50,7 +51,8 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
             gpio_set_level(CONFIG_MQTT_LED_PIN, 1);
         }
 
-        char *sub_topic_config = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/config") + 1); // Check for error allocating memory
+        // char *sub_topic_config = (char *)malloc(strlen("/devices/") + strlen(device_id) + strlen("/config") + 1); // Check for error allocating memory
+        char *sub_topic_config = malloc(strlen("/devices/") + strlen(device_id) + strlen("/config") + 1); // Check for error allocating memory
         sub_topic_config[0] = '\0';
         strcpy(sub_topic_config, "/devices/");
         strcat(sub_topic_config, device_id);
@@ -61,6 +63,8 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
         free(sub_topic_config);
 
+        printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+
         break;
     case MQTT_EVENT_DISCONNECTED:
         mqtt_connected_flag = 0;
@@ -70,6 +74,8 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+        printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
@@ -84,6 +90,8 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+
         ESP_LOGI(TAG, "TOPIC=%.*s", event->topic_len, event->topic);
         ESP_LOGI(TAG, "DATA=%.*s", event->data_len, event->data);
         ESP_LOGD(TAG, "DATA LEN=%d", event->data_len);
@@ -99,6 +107,8 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         {
             ESP_LOGE(TAG, "config data does not contain valid json");
         }
+
+        printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
 
         break;
     case MQTT_EVENT_ERROR:
@@ -135,6 +145,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         break;
     default:
         ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+        printf("fh: %d    min fh: %d\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         break;
     }
 
@@ -314,7 +325,8 @@ static void firmware_update_check(const char *config_data, const int config_data
 static char *getValueFromJson(const char *json_str, const uint32_t json_str_len, const char *key)
 {
     // we don't know how big the value will be but it can't be bigger than this
-    char *value = (char *)malloc(json_str_len); // message base 64 ??
+    // char *value = (char *)malloc(json_str_len); // message base 64 ??
+    char *value = malloc(json_str_len); // message base 64 ??
     value[0] = '\0';
 
     uint32_t s_index = 0;
@@ -374,6 +386,7 @@ static char *getValueFromJson(const char *json_str, const uint32_t json_str_len,
     }
     else
     {
+        free(value);
         return NULL;
     }
 }
@@ -403,6 +416,7 @@ static esp_err_t firmware_update(const char *file_url, const char *certificate)
     if (ret == ESP_OK)
     {
         ESP_LOGI(TAG, "successfully downloaded new firmware");
+        printf("[upload task] stack high water mark: %d\n", uxTaskGetStackHighWaterMark(NULL));
         return ESP_OK;
     }
     else

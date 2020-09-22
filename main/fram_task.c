@@ -57,6 +57,8 @@ void Fram_Task_Code(void *pvParameters)
         uint64_t telemetry_to_store = 0;
         if (xQueueReceive(fram_store_queue, &telemetry_to_store, fram_store_ticks))
         {
+            printf("[FRAM task] stack high water mark: %d\n", uxTaskGetStackHighWaterMark(NULL));
+
             ESP_LOGD(TAG, "-------------------------- rtc alarm!! -------------------------- ");
             ESP_LOGD(TAG, "received telemetry_to_store");
 

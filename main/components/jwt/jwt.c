@@ -127,11 +127,13 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
     jwt_claim_len += strlen(iat);
     jwt_claim_len += strlen(exp);
 
-    char *jwt_claim = (char *)malloc(jwt_claim_len + 1); // + 1 for \0 // MUST FREE THIS
+    // char *jwt_claim = (char *)malloc(jwt_claim_len + 1); // + 1 for \0 // MUST FREE THIS
+    char *jwt_claim = malloc(jwt_claim_len + 1); // + 1 for \0 // MUST FREE THIS
 
     if (jwt_claim == NULL)
     {
         ESP_LOGE(TAG, "[createJwt] jwt_claim == NULL");
+        free(jwt_claim);
         return NULL;
     }
 
@@ -158,11 +160,15 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
 
     size_t jwt_len = strlen(enc_header) + strlen(enc_claim) + 2;
 
-    char *header_payload_base64 = (char *)malloc(jwt_len); // "header_length" + "." + "claims_length" + "\0"
+    // char *header_payload_base64 = (char *)malloc(jwt_len); // "header_length" + "." + "claims_length" + "\0"
+    char *header_payload_base64 = malloc(jwt_len); // "header_length" + "." + "claims_length" + "\0"
 
     if (header_payload_base64 == NULL)
     {
         ESP_LOGE(TAG, "[createJwt] header_payload_base64 == NULL");
+        free(jwt_claim);
+        free(enc_header);
+        free(enc_claim);
         return NULL;
     }
 
@@ -223,11 +229,14 @@ char *createJwt(const char *private_key, const char *project_id, uint32_t exp_se
     comp_len += strlen(enc_signature);
     comp_len += 1; // for the \0
 
-    char *comp_jwt = (char *)malloc(comp_len + 5);
+    // char *comp_jwt = (char *)malloc(comp_len + 5);
+    char *comp_jwt = malloc(comp_len + 5);
 
     if (comp_jwt == NULL)
     {
         ESP_LOGE(TAG, "comp_jwt == NULL");
+        free(header_payload_base64);
+        free(enc_signature);
         return NULL;
     }
 

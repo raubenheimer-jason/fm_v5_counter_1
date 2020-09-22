@@ -64,7 +64,13 @@ xQueueHandle ack_queue = NULL;
 static void start_upload_task(void)
 {
     TaskHandle_t Upload_Task = NULL;
-    const uint32_t STACK_SIZE = 32000;
+    // const uint32_t STACK_SIZE = 32000;
+    // const uint8_t task_priority = 10;
+
+    // const uint32_t STACK_SIZE = 28000;
+    // const uint32_t STACK_SIZE = 12000; // [upload task] stack high water mark: 9200
+    const uint32_t STACK_SIZE = 8000; // [upload task] stack high water mark: 9200
+
     const uint8_t task_priority = 10;
 
     // Create the task, storing the handle.  Note that the passed parameter ucParameterToPass
@@ -78,7 +84,7 @@ static void start_upload_task(void)
 static void start_fram_task()
 {
     TaskHandle_t Fram_Task = NULL;
-    const uint32_t STACK_SIZE = 8000;
+    const uint32_t STACK_SIZE = 8000; // [FRAM task] stack high water mark: 6572
     const uint8_t task_priority = 9;
 
     // Create the task, storing the handle.  Note that the passed parameter ucParameterToPass
@@ -108,6 +114,15 @@ void app_main(void)
     ESP_LOGI(TAG, "***************************************************************************************************************************");
     ESP_LOGI(TAG, "                                                FIRMWARE VERSION:  %s", CONFIG_FIRMWARE_VERSION);
     ESP_LOGI(TAG, "***************************************************************************************************************************");
+
+    // esp_err_t res = get_device_id(device_id);
+
+    // ESP_LOGI(TAG, "get_device_id res: %d, dev id: %s", res, device_id);
+
+    // for (;;)
+    // {
+    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // }
 
     // ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, NUM_RECORDS));
 

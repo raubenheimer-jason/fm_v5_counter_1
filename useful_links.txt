@@ -1,3 +1,7 @@
 Extern
 https://www.geeksforgeeks.org/understanding-extern-keyword-in-c/
 https://stackoverflow.com/questions/1164167/variable-declaration-in-a-header-file
+
+
+Malloc
+https://stackoverflow.com/questions/605845/do-i-cast-the-result-of-malloc
